@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asénse — Генератор КП</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#C9A84C;--dark:#1A1A2E;--navy:#2E4057;
+  --cream:#F9F5EE;--green-bg:#E8F5E9;--green-t:#2E7D32;
+  --bg:#F4F4F1;--surface:#fff;--border:#E0DDD5;
+  --text:#1a1a1a;--muted:#888;--light:#F9F7F4;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#111;--surface:#1c1c1c;--border:#2e2e2e;--text:#f0f0f0;--muted:#888;--light:#222;--cream:#1e1c18}
+}
+body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}}
+
+/* SIDEBAR */
+.sidebar{background:var(--dark);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.brand{font-size:24px;font-weight:300;color:#fff;letter-spacing:4px}
+.brand em{font-style:italic}
+.brand-sub{font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:1.5px;margin-top:3px}
+.nav-section{padding:16px 16px 6px;font-size:9px;color:rgba(255,255,255,0.25);letter-spacing:2px;text-transform:uppercase}
+.nav-item{padding:10px 16px;cursor:pointer;color:rgba(255,255,255,0.55);font-size:13px;display:flex;align-items:center;gap:10px;border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:#fff}
+.nav-item.active{background:rgba(201,168,76,0.12);color:var(--gold);border-left-color:var(--gold)}
+.nav-item i{font-size:17px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,0.07);font-size:10px;color:rgba(255,255,255,0.2);line-height:1.7}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:16px;font-weight:500}
+.topbar-actions{display:flex;gap:8px}
+.content{padding:24px;flex:1}
+
+/* BUTTONS */
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s;font-family:inherit;white-space:nowrap}
+.btn:hover{background:var(--light)}
+.btn-gold{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:500}
+.btn-gold:hover{background:#b8963e;border-color:#b8963e}
+.btn-dark{background:var(--dark);color:#fff;border-color:var(--dark)}
+.btn-dark:hover{background:#2a2a45}
+.btn-sm{padding:6px 12px;font-size:12px}
+
+/* SEGMENTS */
+.seg-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.seg-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;font-family:inherit}
+.seg-btn:hover{border-color:var(--gold);color:var(--text)}
+.seg-btn.active{background:var(--dark);color:var(--gold);border-color:var(--dark);font-weight:500}
+
+/* SECTION TITLE */
+.sec-title{font-size:11px;font-weight:500;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;margin-top:20px}
+.sec-title:first-child{margin-top:0}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
+@media(max-width:500px){.form-grid{grid-template-columns:1fr}}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:12px;color:var(--muted)}
+.fg input,.fg select,.fg textarea{padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;transition:border-color .15s}
+.fg input:focus,.fg select:focus{outline:none;border-color:var(--gold)}
+
+/* PARAMS */
+.params-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px;background:var(--light);border-radius:8px;margin-bottom:20px;border:1px solid var(--border)}
+@media(max-width:600px){.params-row{grid-template-columns:1fr 1fr}}
+.param-block{display:flex;flex-direction:column;gap:5px}
+.param-block label{font-size:11px;color:var(--muted)}
+.param-block input{padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit}
+.param-block input:focus{outline:none;border-color:var(--gold)}
+
+/* PRODUCT ROWS */
+.prod-header{display:grid;grid-template-columns:30px 1fr 90px 90px 100px;gap:10px;padding:4px 12px;margin-bottom:4px}
+.prod-col{font-size:10px;color:var(--muted);letter-spacing:.5px}
+.prod-list{display:flex;flex-direction:column;gap:5px}
+.prod-row{display:grid;grid-template-columns:30px 1fr 90px 90px 100px;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);transition:border-color .15s}
+.prod-row:hover{border-color:#bbb}
+.prod-row.on{border-color:var(--gold);background:rgba(201,168,76,0.04)}
+.prod-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0}
+.prod-name{font-size:13px}
+.prod-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.num-in{width:62px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center;background:var(--surface);color:var(--text);font-family:inherit}
+.num-in:focus{outline:none;border-color:var(--gold)}
+
+/* TOTALS */
+.totals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}
+.tc{padding:14px 18px;border:1px solid var(--border);border-radius:8px;background:var(--light)}
+.tc.gold{background:var(--dark);border-color:var(--dark)}
+.tc-label{font-size:11px;color:var(--muted);margin-bottom:5px}
+.tc.gold .tc-label{color:rgba(255,255,255,0.4)}
+.tc-val{font-size:22px;font-weight:500}
+.tc.gold .tc-val{color:var(--gold)}
+
+/* AROMA CHIPS */
+.aroma-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.aroma-chip{padding:6px 14px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:var(--surface);color:var(--muted);transition:all .15s}
+.aroma-chip:hover{border-color:var(--gold)}
+.aroma-chip.on{border-color:var(--gold);background:rgba(201,168,76,0.1);color:var(--text);font-weight:500}
+
+/* NOTICE */
+.notice{padding:10px 14px;background:var(--light);border-radius:8px;font-size:12px;color:var(--muted);border:1px solid var(--border);display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.free-notice{padding:10px 14px;background:var(--green-bg);border-radius:8px;font-size:12px;color:var(--green-t);display:flex;align-items:center;gap:8px;margin:12px 0}
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* HISTORY */
+.history-list{display:flex;flex-direction:column;gap:8px}
+.hist-item{padding:12px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .15s}
+.hist-item:hover{border-color:var(--gold)}
+.hist-name{font-size:13px;font-weight:500}
+.hist-meta{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* PRINT PREVIEW */
+.preview-wrap{background:var(--light);padding:16px;border-radius:8px;border:1px solid var(--border)}
+.kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:700px;margin:0 auto;font-size:12.5px;font-family:'Helvetica Neue',Arial,sans-serif}
+.kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #ddd}
+.kp-brand{font-size:26px;font-weight:300;letter-spacing:4px;color:#1a1a1a}
+.kp-brand em{font-style:italic}
+.kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+.kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
+.kp-req strong{color:#1a1a1a}
+.kp-date{font-size:11px;color:#999}
+.kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 16px}
+.kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:18px}
+table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+table.kp-t thead tr{background:#1A1A2E}
+table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+table.kp-t thead th:not(:first-child){text-align:right}
+table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+.kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+.kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+.kp-foot strong{color:#1a1a1a}
+
+@media print{
+  body,html{background:#fff}
+  .sidebar,.topbar,.preview-wrap>*:not(.kp-doc){display:none}
+  .app{display:block}
+  .main{display:block}
+  .content{padding:0}
+  .kp-doc{box-shadow:none;padding:20px}
+  .no-print{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">As<em>é</em>nse</div>
+    <div class="brand-sub">Генератор КП</div>
+  </div>
+  <div class="nav-section">Разделы</div>
+  <div class="nav-item active" onclick="go('client')" id="nav-client"><i class="ti ti-building"></i>Клиент</div>
+  <div class="nav-item" onclick="go('products')" id="nav-products"><i class="ti ti-box"></i>Продукты</div>
+  <div class="nav-item" onclick="go('aroma')" id="nav-aroma"><i class="ti ti-flame"></i>Ароматы</div>
+  <div class="nav-item" onclick="go('preview')" id="nav-preview"><i class="ti ti-file-text"></i>Предпросмотр</div>
+  <div class="nav-item" onclick="go('history')" id="nav-history"><i class="ti ti-clock"></i>История КП</div>
+  <div class="nav-item" onclick="go('prices')" id="nav-prices"><i class="ti ti-tag"></i>Прайс</div>
+  <div class="nav-item" onclick="go('help')" id="nav-help"><i class="ti ti-help-circle"></i>Инструкция</div>
+  <div class="sidebar-footer">
+    ООО «АСЕНС»<br>
+    commerce@asense.store<br>
+    +7 (495) 970-86-40<br>
+    sales@asense.ru
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+<div class="topbar">
+  <div class="topbar-title" id="topbar-title">Клиент</div>
+  <div class="topbar-actions no-print">
+    <button class="btn btn-sm" onclick="saveToHistory()"><i class="ti ti-device-floppy"></i>Сохранить</button>
+    <button class="btn btn-sm" onclick="exportExcel()"><i class="ti ti-table"></i>Excel</button>
+    <button class="btn btn-sm btn-gold" onclick="printKP()"><i class="ti ti-printer"></i>PDF / Печать</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- CLIENT -->
+<div id="sec-client">
+  <div class="sec-title">Сегмент</div>
+  <div class="seg-tabs">
+    <button class="seg-btn active" onclick="setSeg('restaurant',this)"><i class="ti ti-tools-kitchen-2"></i>Ресторан</button>
+    <button class="seg-btn" onclick="setSeg('hotel',this)"><i class="ti ti-building-community"></i>Отель</button>
+    <button class="seg-btn" onclick="setSeg('spa',this)"><i class="ti ti-droplet"></i>СПА</button>
+    <button class="seg-btn" onclick="setSeg('glamping',this)"><i class="ti ti-tent"></i>Глэмпинг</button>
+  </div>
+
+  <div class="sec-title">Карточка клиента</div>
+  <div class="form-grid">
+    <div class="fg"><label>Название объекта</label><input id="c-name" type="text" placeholder="Skyfall SPA"></div>
+    <div class="fg"><label>Контактное лицо</label><input id="c-contact" type="text" placeholder="Иван Иванов"></div>
+    <div class="fg"><label>Город</label><input id="c-city" type="text" placeholder="Санкт-Петербург"></div>
+    <div class="fg"><label>Адрес</label><input id="c-address" type="text" placeholder="наб. Фонтанки, 59"></div>
+    <div class="fg"><label>Телефон / email</label><input id="c-phone" type="text" placeholder="+7 900 000 00 00"></div>
+    <div class="fg"><label>Менеджер Asense</label><input id="c-manager" type="text" placeholder="Вика, Анфиса..."></div>
+  </div>
+  <div class="fg" style="margin-bottom:20px"><label>Вводная фраза в КП (необязательно)</label><input id="c-note" type="text" placeholder="Как и договорились, направляю предложение..."></div>
+
+  <div class="sec-title">Параметры объекта</div>
+  <div class="params-row">
+    <div class="param-block"><label id="lbl-seats">Посадочных мест</label><input id="p-seats" type="number" value="80" min="1" oninput="recalc()"></div>
+    <div class="param-block"><label>Гостей в день</label><input id="p-guests" type="number" value="80" min="1" oninput="recalc()"></div>
+    <div class="param-block"><label>Рабочих дней / мес</label><input id="p-days" type="number" value="26" min="1" max="31" oninput="recalc()"></div>
+    <div class="param-block"><label>Скидка / наценка %</label><input id="p-disc" type="number" value="0" min="-50" max="50" oninput="recalc()"></div>
+  </div>
+  <button class="btn btn-dark" onclick="go('products')"><i class="ti ti-arrow-right"></i>К продуктам</button>
+</div>
+
+<!-- PRODUCTS -->
+<div id="sec-products" style="display:none">
+  <div class="sec-title">Косметика — канистры 5 000 мл</div>
+  <div class="prod-header">
+    <div></div>
+    <div class="prod-col">Продукт</div>
+    <div class="prod-col" style="text-align:center">Норм. мл/гость</div>
+    <div class="prod-col" style="text-align:right">Цена / кан.</div>
+    <div class="prod-col" style="text-align:right">Кан. в мес.</div>
+  </div>
+  <div class="prod-list" id="list-cosmetic"></div>
+
+  <div class="divider"></div>
+  <div class="sec-title">Ароматизация</div>
+  <div class="prod-header">
+    <div></div><div class="prod-col">Продукт</div>
+    <div class="prod-col" style="text-align:center">Объём</div>
+    <div class="prod-col" style="text-align:right">Цена / ед.</div>
+    <div class="prod-col" style="text-align:right">Кол-во</div>
+  </div>
+  <div class="prod-list" id="list-aroma"></div>
+
+  <div class="divider"></div>
+  <div class="sec-title">Миниатюры 30 мл / Travel Kit / Наборы</div>
+  <div class="prod-list" id="list-mini"></div>
+
+  <div class="divider"></div>
+  <div class="sec-title">Коллекция флаконов 300 мл (матовое стекло)</div>
+  <div class="prod-list" id="list-bottle300"></div>
+
+  <div class="divider"></div>
+  <div class="sec-title">Коллекция флаконов 500 мл</div>
+  <div class="prod-list" id="list-bottle500"></div>
+
+  <div class="divider"></div>
+  <div class="sec-title">Оборудование и аксессуары</div>
+  <div class="prod-list" id="list-equip"></div>
+
+  <div class="free-notice"><i class="ti ti-gift"></i>При первом заказе: флаконы 300 мл, помпы для канистр, брендирование — бесплатно</div>
+
+  <div class="divider"></div>
+  <div class="sec-title">Дополнительные позиции</div>
+  <div class="notice"><i class="ti ti-info-circle"></i>Добавьте любую позицию вручную — флаконы, кронштейны, подарки. Цена 0 или 1 ₽ = отображается как «Бесплатно».</div>
+  <div id="list-custom"></div>
+  <div style="margin-top:10px">
+    <button class="btn" onclick="addCustomItem()"><i class="ti ti-plus"></i>Добавить позицию</button>
+  </div>
+
+  <div class="totals">
+    <div class="tc"><div class="tc-label">Канистр / месяц</div><div class="tc-val" id="t-cans">—</div></div>
+    <div class="tc"><div class="tc-label">Сумма / месяц</div><div class="tc-val" id="t-month">—</div></div>
+    <div class="tc gold"><div class="tc-label">В год</div><div class="tc-val" id="t-year">—</div></div>
+  </div>
+  <button class="btn btn-dark" onclick="go('preview')"><i class="ti ti-eye"></i>Предпросмотр КП</button>
+</div>
+
+<!-- AROMA -->
+<div id="sec-aroma" style="display:none">
+  <div class="sec-title">Ароматы для косметики</div>
+  <div class="notice"><i class="ti ti-info-circle"></i>Можно выбрать несколько — попадут в примечание к КП</div>
+  <div class="aroma-grid" id="ag-cos"></div>
+  <div class="divider"></div>
+  <div class="sec-title">Ароматы для ароматизации помещений</div>
+  <div class="aroma-grid" id="ag-diff"></div>
+  <div class="divider"></div>
+  <div class="sec-title">SPA-ароматы</div>
+  <div class="aroma-grid" id="ag-spa"></div>
+</div>
+
+<!-- PREVIEW -->
+<div id="sec-preview" style="display:none">
+  <div class="notice no-print"><i class="ti ti-printer"></i>Нажмите «PDF / Печать» — откроется окно печати браузера. Выберите «Сохранить как PDF».</div>
+  <div class="preview-wrap" id="preview-wrap"></div>
+</div>
+
+<!-- HISTORY -->
+<div id="sec-history" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div class="sec-title" style="margin:0">Сохранённые КП</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="exportBackupJSON()"><i class="ti ti-download"></i>Скачать бэкап JSON</button>
+      <button class="btn btn-sm" onclick="exportBackupExcel()"><i class="ti ti-table-export"></i>Скачать бэкап Excel</button>
+      <label class="btn btn-sm" style="cursor:pointer"><i class="ti ti-upload"></i>Загрузить бэкап<input type="file" accept=".json" style="display:none" onchange="importBackup(this)"></label>
+    </div>
+  </div>
+  <div class="notice"><i class="ti ti-info-circle"></i>КП хранятся в браузере на этом устройстве. Делайте бэкап чтобы не потерять данные.</div>
+  <div class="history-list" id="history-list"></div>
+  <div id="history-empty" style="color:var(--muted);font-size:13px;padding:20px 0;display:none">Сохранённых КП пока нет</div>
+</div>
+
+<!-- PRICES -->
+<div id="sec-prices" style="display:none">
+  <div class="notice"><i class="ti ti-info-circle"></i>Цены сохраняются в браузере. Менять можно любую позицию — изменения применяются сразу ко всем КП.</div>
+  <div class="sec-title">Косметика — 5 000 мл</div>
+  <div id="price-list-cosmetic"></div>
+  <div class="divider"></div>
+  <div class="sec-title">Ароматизация и парфюм для дома</div>
+  <div id="price-list-aroma"></div>
+  <div class="divider"></div>
+  <div class="sec-title">Миниатюры 30 мл / Travel Kit / Наборы</div>
+  <div id="price-list-mini"></div>
+  <div class="divider"></div>
+  <div class="sec-title">Флаконы 300 мл</div>
+  <div id="price-list-b300"></div>
+  <div class="divider"></div>
+  <div class="sec-title">Флаконы 500 мл</div>
+  <div id="price-list-b500"></div>
+  <div class="divider"></div>
+  <div class="sec-title">Оборудование и аксессуары</div>
+  <div id="price-list-equip"></div>
+  <div style="margin-top:20px;display:flex;gap:10px">
+    <button class="btn btn-dark" onclick="savePrices()"><i class="ti ti-device-floppy"></i>Сохранить цены</button>
+    <button class="btn" onclick="resetPrices()"><i class="ti ti-refresh"></i>Сбросить к базовым</button>
+  </div>
+</div>
+
+<!-- HELP -->
+<div id="sec-help" style="display:none">
+  <div style="max-width:640px">
+
+    <div style="padding:16px 20px;background:var(--dark);border-radius:10px;margin-bottom:20px;display:flex;align-items:center;gap:16px">
+      <div style="font-size:28px;font-weight:300;color:#fff;letter-spacing:4px;flex-shrink:0">As<em style="font-style:italic">é</em>nse</div>
+      <div>
+        <div style="font-size:14px;font-weight:500;color:var(--gold)">Генератор коммерческих предложений</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Инструкция по работе</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="background:var(--navy);color:#fff;padding:10px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-building" style="font-size:16px"></i>1. Клиент</div>
+        <div style="padding:14px 16px;font-size:13px;color:var(--text);line-height:1.7;background:var(--surface)">
+          Выберите сегмент объекта (ресторан / отель / СПА / глэмпинг) — от этого зависят нормы расхода продуктов.<br>
+          Заполните карточку клиента: название, контакт, город, адрес. <b>Незаполненные поля просто не отображаются в КП.</b><br>
+          Укажите параметры объекта: гостей в день и рабочих дней в месяц — приложение автоматически рассчитает нужное количество канистр.<br>
+          Поле «Скидка / наценка %» пересчитывает все цены в КП пропорционально.
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="background:var(--navy);color:#fff;padding:10px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-box" style="font-size:16px"></i>2. Продукты</div>
+        <div style="padding:14px 16px;font-size:13px;color:var(--text);line-height:1.7;background:var(--surface)">
+          Поставьте галочки напротив нужных позиций.<br>
+          У каждого продукта есть выпадающий список <b>ароматов</b> — выбранный аромат попадает в КП рядом с названием продукта.<br>
+          Мыло-скраб — аромат фиксированный (Vetiver &amp; Rosemary), выбор не нужен.<br>
+          Для канистр 5л количество рассчитывается автоматически по норме расхода. Для ароматики, миниатюр и оборудования — вводите вручную.<br>
+          Раздел <b>«Дополнительные позиции»</b> — добавьте любую позицию вручную. Цена 0 или 1 ₽ отобразится в КП как «Бесплатно».
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="background:var(--navy);color:#fff;padding:10px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-flame" style="font-size:16px"></i>3. Ароматы</div>
+        <div style="padding:14px 16px;font-size:13px;color:var(--text);line-height:1.7;background:var(--surface)">
+          Выберите ароматы для итогового примечания в КП.<br>
+          Косметика — основная линейка (Pure Cannabis, Virgin Lemongrass и др.).<br>
+          Ароматизация помещений — отдельная линейка диффузоров.<br>
+          SPA-ароматы — специальная SPA edition (White Lotus, Hamam Lover, Meditation Session).
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="background:var(--navy);color:#fff;padding:10px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-file-text" style="font-size:16px"></i>4. Предпросмотр и выгрузка</div>
+        <div style="padding:14px 16px;font-size:13px;color:var(--text);line-height:1.7;background:var(--surface)">
+          <b>Предпросмотр</b> — показывает готовое КП как оно будет выглядеть для клиента.<br>
+          <b>PDF / Печать</b> — открывает окно печати браузера. Выберите «Сохранить как PDF» чтобы получить файл.<br>
+          <b>Excel</b> — выгружает два листа: КП с фирменным оформлением + расчёт расхода по трём сценариям загрузки (50 / 70 / 100%).
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="background:var(--navy);color:#fff;padding:10px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-clock" style="font-size:16px"></i>5. История КП</div>
+        <div style="padding:14px 16px;font-size:13px;color:var(--text);line-height:1.7;background:var(--surface)">
+          Нажмите <b>«Сохранить»</b> в верхней панели — КП сохранится в браузере с датой, суммой и именем клиента.<br>
+          В истории можно: открыть КП в одно нажатие, посмотреть предпросмотр в новой вкладке, удалить.<br>
+          <b>Бэкап JSON</b> — скачайте полный бэкап всех КП и изменённых цен на компьютер.<br>
+          <b>Загрузить бэкап</b> — восстановите данные из JSON файла на любом устройстве. Дубли не создаются.<br>
+          <span style="color:var(--gold)">⚠ Данные хранятся только в браузере на этом устройстве. Регулярно делайте бэкап!</span>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="background:var(--navy);color:#fff;padding:10px 16px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px"><i class="ti ti-tag" style="font-size:16px"></i>6. Прайс</div>
+        <div style="padding:14px 16px;font-size:13px;color:var(--text);line-height:1.7;background:var(--surface)">
+          Здесь можно изменить цены для конкретного клиента или установить персональные цены глобально.<br>
+          Цена меняется сразу при вводе — сохранять отдельно не нужно.<br>
+          Изменённые цены подсвечиваются золотым, рядом показывается базовая цена из прайса.<br>
+          <b>Сбросить</b> — возвращает все цены к базовым из прайса HoReCa.<br>
+          Цены сохраняются в браузере и применяются ко всем новым КП.
+        </div>
+      </div>
+
+      <div style="padding:14px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.7">
+        <div style="font-weight:500;color:var(--gold);margin-bottom:6px">Полезные советы</div>
+        Сегмент влияет на автозаполнение «Гостей в день» — при переключении значение обновится.<br>
+        Для разных клиентов с разными ценами используйте поле «Скидка / наценка %» — быстрее чем менять прайс.<br>
+        КП автоматически обновляется при изменении любого параметра — предпросмотр всегда актуален.<br>
+        На GitHub Pages приложение работает полностью в браузере — интернет нужен только для открытия страницы.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+const PRODUCTS = [
+  // Канистры 5л
+  {id:'soap',    name:'Жидкое мыло Asense',           sub:'5 000 мл', price:5500, norm:18, type:'cosmetic'},
+  {id:'lotion',  name:'Лосьон для тела и рук Asense', sub:'5 000 мл', price:7500, norm:10, type:'cosmetic'},
+  {id:'shampoo', name:'Шампунь Asense',               sub:'5 000 мл', price:6500, norm:11, type:'cosmetic'},
+  {id:'cond',    name:'Кондиционер Asense',           sub:'5 000 мл', price:7500, norm:7,  type:'cosmetic'},
+  {id:'gel',     name:'Гель для душа Asense',         sub:'5 000 мл', price:5500, norm:18, type:'cosmetic'},
+  {id:'scrub',   name:'Мыло-скраб Vetiver & Rosemary',sub:'5 000 мл', price:7000, norm:10, type:'cosmetic'},
+  // Ароматизация
+  {id:'ref1',    name:'Рефилл аромадиффузора',        sub:'1 000 мл', price:9950, norm:0, type:'aroma', vol:'1 000 мл'},
+  {id:'dif125',  name:'Аромадиффузор готовый',        sub:'125 мл',   price:1500, norm:0, type:'aroma', vol:'125 мл'},
+  {id:'machine', name:'Аромамашина профессиональная', sub:'до 100 м²',price:6000, norm:0, type:'aroma', vol:'—'},
+  // Парфюм для дома
+  {id:'pfm50',   name:'Парфюм для дома',              sub:'50 мл',    price:1000, norm:0, type:'aroma', vol:'50 мл'},
+  {id:'pfm250',  name:'Парфюм для дома',              sub:'250 мл',   price:1250, norm:0, type:'aroma', vol:'250 мл'},
+  {id:'pfm500',  name:'Парфюм для дома',              sub:'500 мл',   price:1750, norm:0, type:'aroma', vol:'500 мл'},
+  {id:'pfm1000', name:'Рефилл парфюма для дома',      sub:'1 000 мл', price:3500, norm:0, type:'aroma', vol:'1 000 мл'},
+  {id:'spray50', name:'Антибактериальный спрей',      sub:'50 мл',    price:1000, norm:0, type:'aroma', vol:'50 мл'},
+  // Миниатюры 30мл
+  {id:'mini_soap',   name:'Миниатюра Жидкое мыло',           sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
+  {id:'mini_lotion', name:'Миниатюра Лосьон для тела и рук',  sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
+  {id:'mini_shampoo',name:'Миниатюра Шампунь',                sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
+  {id:'mini_cond',   name:'Миниатюра Кондиционер',            sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
+  {id:'mini_gel',    name:'Миниатюра Гель для душа',          sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
+  {id:'mini_scrub',  name:'Миниатюра Мыло-скраб Vetiver',     sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
+  // Travel Kit и наборы
+  {id:'travelkit',   name:'Travel Kit косметичка',             sub:'4×30 мл', price:750, norm:0, type:'mini', vol:'120 мл'},
+  {id:'giftbag',     name:'Подарочный набор в льняном мешочке',sub:'2×30 мл', price:750, norm:0, type:'mini', vol:'200 мл'},
+  // Коллекция 300мл (флаконы)
+  {id:'soap300',   name:'Жидкое мыло 300 мл',         sub:'300 мл', price:950,  norm:0, type:'bottle300', vol:'300 мл'},
+  {id:'lotion300', name:'Лосьон для тела и рук 300 мл',sub:'300 мл', price:990,  norm:0, type:'bottle300', vol:'300 мл'},
+  {id:'shamp300',  name:'Шампунь 300 мл',              sub:'300 мл', price:990,  norm:0, type:'bottle300', vol:'300 мл'},
+  {id:'cond300',   name:'Кондиционер 300 мл',          sub:'300 мл', price:990,  norm:0, type:'bottle300', vol:'300 мл'},
+  {id:'gel300',    name:'Гель для душа 300 мл',        sub:'300 мл', price:950,  norm:0, type:'bottle300', vol:'300 мл'},
+  // Коллекция 500мл (флаконы)
+  {id:'soap500',   name:'Жидкое мыло 500 мл',         sub:'500 мл', price:1350, norm:0, type:'bottle500', vol:'500 мл'},
+  {id:'lotion500', name:'Лосьон для тела и рук 500 мл',sub:'500 мл', price:1450, norm:0, type:'bottle500', vol:'500 мл'},
+  {id:'shamp500',  name:'Шампунь 500 мл',              sub:'500 мл', price:1500, norm:0, type:'bottle500', vol:'500 мл'},
+  {id:'cond500',   name:'Кондиционер 500 мл',          sub:'500 мл', price:1500, norm:0, type:'bottle500', vol:'500 мл'},
+  {id:'gel500',    name:'Гель для душа 500 мл',        sub:'500 мл', price:1350, norm:0, type:'bottle500', vol:'500 мл'},
+];
+const EQUIP = [
+  {id:'br1',      name:'Кронштейн 1 место (нерж. RAL)',   price:2500, unit:'шт'},
+  {id:'br2',      name:'Кронштейн 2 места (нерж. RAL)',   price:3500, unit:'шт'},
+  {id:'br3',      name:'Кронштейн 3 места (нерж. RAL)',   price:4300, unit:'шт'},
+  {id:'brd',      name:'Кронштейн для диффузора 125 мл',  price:2500, unit:'шт'},
+  {id:'fl300',    name:'Флакон 300 мл матовое стекло',    price:300,  unit:'шт'},
+  {id:'fl500',    name:'Флакон 500 мл матовое стекло',    price:300,  unit:'шт'},
+  {id:'pmp',      name:'Помпа для канистры 5 000 мл',     price:500,  unit:'шт'},
+  {id:'acc_comb', name:'Расчёска (металл. упаковка)',     price:10,   unit:'шт'},
+  {id:'acc_tooth',name:'Зубной набор (металл. упаковка)', price:20,   unit:'шт'},
+  {id:'acc_cap',  name:'Шапочка для душа',                price:10,   unit:'шт'},
+  {id:'acc_sew',  name:'Швейный набор',                   price:15,   unit:'шт'},
+  {id:'acc_razor',name:'Бритвенный набор',                price:28,   unit:'шт'},
+  {id:'acc_sponge',name:'Губка для тела',                 price:55,   unit:'шт'},
+  {id:'acc_slipp',name:'Тапки флис Люкс',                 price:155,  unit:'шт'},
+];
+const AROMAS_COS  = ['Pure Cannabis','Virgin Lemongrass','Tobacco Leaf & Vanilla','Vetiver & Rosemary','Sea Salt & Wood'];
+const AROMAS_DIFF = ['Pure Cannabis','Oud Wealth','Warm Cinnamon Bun','Tobacco Leaf & Vanilla','Virgin Lemongrass'];
+const AROMAS_SPA  = ['White Lotus (SPA edition)','Hamam Lover (SPA edition)','Meditation Session (SPA edition)'];
+const SEG_LABELS  = {restaurant:'Посадочных мест',hotel:'Номеров',spa:'Гостей/день',glamping:'Лоджей / домиков'};
+const SEG_GUESTS  = {restaurant:80,hotel:40,spa:30,glamping:15};
+const SECTIONS = ['client','products','aroma','preview','history','prices','help'];
+const TITLES   = {client:'Клиент',products:'Продукты',aroma:'Ароматы',preview:'Предпросмотр КП',history:'История КП',prices:'Прайс — редактор цен',help:'Инструкция'};
+
+let state = {
+  segment:'restaurant',
+  checked:{soap:true,gel:true,shampoo:true,lotion:false,cond:false,scrub:false,ref1:false,dif125:false,machine:false,pfm50:false,pfm250:false,pfm500:false,pfm1000:false,spray50:false,mini_soap:false,mini_lotion:false,mini_shampoo:false,mini_cond:false,mini_gel:false,mini_scrub:false,travelkit:false,giftbag:false,soap300:false,lotion300:false,shamp300:false,cond300:false,gel300:false,soap500:false,lotion500:false,shamp500:false,cond500:false,gel500:false},
+  equip:{},
+  qty:{},
+  aromasCos:new Set(['Pure Cannabis']),
+  aromasDiff:new Set(),
+  aromasSpa:new Set(),
+  productAroma:{},
+  customItems:[],
+};
+
+const v = id => document.getElementById(id).value.trim();
+const fmt = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+const getGuests = () => +document.getElementById('p-guests').value||50;
+const getDays   = () => +document.getElementById('p-days').value||26;
+const getDisc   = () => +document.getElementById('p-disc').value||0;
+
+const BASE_PRICES = {};
+[...PRODUCTS, ...EQUIP].forEach(p => BASE_PRICES[p.id] = p.price);
+
+let customPrices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
+function getPrice(id){ return customPrices[id] ?? BASE_PRICES[id]; }
+function applyCustomPrices(){ [...PRODUCTS,...EQUIP].forEach(p=>{ p.price = getPrice(p.id); }); }
+
+const adjPrice  = p => Math.round(p*(1+getDisc()/100));
+const calcCans  = norm => Math.max(1, Math.ceil(getGuests()*getDays()*norm/5000));
+
+function go(id){
+  SECTIONS.forEach(s=>{
+    document.getElementById('sec-'+s).style.display = s===id?'':'none';
+    document.getElementById('nav-'+s).classList.toggle('active', s===id);
+  });
+  document.getElementById('topbar-title').textContent = TITLES[id];
+  if(id==='preview')  renderPreview();
+  if(id==='aroma')    renderAromas();
+  if(id==='history')  renderHistory();
+  if(id==='products') renderProducts();
+  if(id==='prices')  renderPrices();
+}
+
+function setSeg(seg, el){
+  state.segment = seg;
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('lbl-seats').textContent = SEG_LABELS[seg];
+  document.getElementById('p-guests').value = SEG_GUESTS[seg];
+  recalc();
+}
+
+function renderProducts(){
+  const AROMA_MAP = {
+    soap:AROMAS_COS, lotion:AROMAS_COS, shampoo:AROMAS_COS, cond:AROMAS_COS, gel:AROMAS_COS,
+    mini_soap:AROMAS_COS, mini_lotion:AROMAS_COS, mini_shampoo:AROMAS_COS, mini_cond:AROMAS_COS, mini_gel:AROMAS_COS,
+    soap300:AROMAS_COS, lotion300:AROMAS_COS, shamp300:AROMAS_COS, cond300:AROMAS_COS, gel300:AROMAS_COS,
+    soap500:AROMAS_COS, lotion500:AROMAS_COS, shamp500:AROMAS_COS, cond500:AROMAS_COS, gel500:AROMAS_COS,
+    ref1:[...AROMAS_DIFF,...AROMAS_SPA], dif125:[...AROMAS_DIFF,...AROMAS_SPA],
+    pfm50:[...AROMAS_DIFF,...AROMAS_SPA], pfm250:[...AROMAS_DIFF,...AROMAS_SPA],
+    pfm500:[...AROMAS_DIFF,...AROMAS_SPA], pfm1000:[...AROMAS_DIFF,...AROMAS_SPA],
+    spray50:AROMAS_DIFF,
+    travelkit:AROMAS_COS, giftbag:AROMAS_COS,
+  };
+  const FIXED_AROMA = {scrub:'Vetiver & Rosemary', mini_scrub:'Vetiver & Rosemary'};
+
+  function makeRow(p, isEquip){
+    const on  = isEquip ? (state.equip[p.id]||false) : (state.checked[p.id]||false);
+    const ap  = adjPrice(p.price);
+    const toggle = isEquip ? "toggleEquip('"+p.id+"',this.checked)" : "toggleProd('"+p.id+"',this.checked)";
+
+    let rightCol;
+    if(isEquip){
+      rightCol = '<input class="num-in" type="number" min="0" value="'+(state.qty[p.id]||1)+'" oninput="state.qty[\''+p.id+'\']=+this.value;recalc()">';
+    } else if(p.norm > 0){
+      rightCol = '<span style="font-weight:500;text-align:right;display:block">'+calcCans(p.norm)+'</span>';
+    } else {
+      rightCol = '<input class="num-in" type="number" min="0" value="'+(state.qty[p.id]||1)+'" oninput="state.qty[\''+p.id+'\']=+this.value;recalc()">';
+    }
+
+    const aromaList  = AROMA_MAP[p.id];
+    const fixedAroma = FIXED_AROMA[p.id];
+    const selAroma   = state.productAroma[p.id]||'';
+    let aromaHtml = '';
+    if(fixedAroma){
+      aromaHtml = '<div style="grid-column:1/-1;padding:2px 0 4px 30px;font-size:11px;color:var(--muted)">Аромат: <strong style="color:var(--gold)">'+fixedAroma+'</strong></div>';
+    } else if(aromaList){
+      let opts = '<option value="">— выбрать аромат —</option>';
+      aromaList.forEach(function(a){ opts += '<option value="'+a+'"'+(selAroma===a?' selected':'')+'>'+a+'</option>'; });
+      aromaHtml = '<div style="grid-column:1/-1;padding:2px 0 6px 30px;display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:11px;color:var(--muted)">Аромат:</span>'
+        +'<select style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text);font-family:inherit;max-width:260px" onchange="state.productAroma[\''+p.id+'\']=this.value">'
+        +opts+'</select>'
+        +(selAroma?'<span style="font-size:11px;background:rgba(201,168,76,0.12);color:var(--gold);padding:2px 8px;border-radius:12px">'+selAroma+'</span>':'')
+        +'</div>';
+    }
+
+    return '<div class="prod-row'+(on?' on':'')+'" id="row-'+p.id+'" style="display:grid;grid-template-columns:30px 1fr 90px 90px 100px;flex-wrap:wrap">'
+      +'<input type="checkbox"'+(on?' checked':'')+' onchange="'+toggle+'">'
+      +'<div><div class="prod-name">'+p.name+'</div><div class="prod-sub">'+(p.vol||p.sub||'')+'</div></div>'
+      +'<div style="text-align:center;color:var(--muted);font-size:12px">'+(p.norm>0?p.norm+' мл':(p.vol||'—'))+'</div>'
+      +'<div style="text-align:right;color:var(--muted);font-size:12px">'+fmt(ap)+'</div>'
+      +'<div>'+rightCol+'</div>'
+      +aromaHtml
+      +'</div>';
+  }
+
+  function renderList(id, items, isEquip){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = items.map(function(p){ return makeRow(p, isEquip); }).join('');
+  }
+
+  renderList('list-cosmetic',  PRODUCTS.filter(function(p){return p.type==='cosmetic';}),   false);
+  renderList('list-aroma',     PRODUCTS.filter(function(p){return p.type==='aroma';}),     false);
+  renderList('list-mini',      PRODUCTS.filter(function(p){return p.type==='mini';}),      false);
+  renderList('list-bottle300', PRODUCTS.filter(function(p){return p.type==='bottle300';}), false);
+  renderList('list-bottle500', PRODUCTS.filter(function(p){return p.type==='bottle500';}), false);
+  renderList('list-equip',     EQUIP, true);
+  renderCustomItems();
+  updateTotals();
+}
+
+
+function renderCustomItems(){
+  const el = document.getElementById('list-custom');
+  if(!el) return;
+  if(!state.customItems.length){el.innerHTML='';return;}
+  el.innerHTML = state.customItems.map((item,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 110px 90px 36px;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);margin-bottom:5px">
+      <input type="text" value="${item.name}" placeholder="Название позиции"
+        style="padding:6px 9px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit"
+        oninput="state.customItems[${i}].name=this.value">
+      <div style="display:flex;align-items:center;gap:4px">
+        <input type="number" value="${item.price}" min="0" placeholder="Цена"
+          style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit"
+          oninput="state.customItems[${i}].price=+this.value;updateTotals()">
+        <span style="font-size:11px;color:var(--muted)">₽</span>
+      </div>
+      <input type="number" value="${item.qty}" min="1" placeholder="Кол-во"
+        style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;width:100%"
+        oninput="state.customItems[${i}].qty=+this.value;updateTotals()">
+      <button onclick="removeCustomItem(${i})" style="width:32px;height:32px;border:1px solid #ffcccc;border-radius:6px;background:none;color:#e44;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px">×</button>
+    </div>`).join('');
+}
+
+function addCustomItem(){
+  state.customItems.push({name:'', price:0, qty:1});
+  renderCustomItems();
+}
+function removeCustomItem(i){
+  state.customItems.splice(i,1);
+  renderCustomItems();
+  updateTotals();
+}
+
+function toggleProd(id, val){ state.checked[id]=val; document.getElementById('row-'+id).classList.toggle('on',val); updateTotals(); }
+function toggleEquip(id, val){ state.equip[id]=val;  document.getElementById('row-'+id).classList.toggle('on',val); updateTotals(); }
+
+function updateTotals(){
+  let cans=0, sum=0;
+  PRODUCTS.forEach(p=>{
+    if(!state.checked[p.id]) return;
+    const ap = adjPrice(p.price);
+    const q = p.norm>0 ? calcCans(p.norm) : (state.qty[p.id]||1);
+    if(p.type==='cosmetic') cans+=q;
+    sum += ap*q;
+  });
+  EQUIP.forEach(e=>{
+    if(!state.equip[e.id]) return;
+    sum += adjPrice(e.price)*(state.qty[e.id]||1);
+  });
+  state.customItems.forEach(item=>{
+    if(item.name) sum += (item.price||0)*(item.qty||1);
+  });
+  document.getElementById('t-cans').textContent  = cans||'—';
+  document.getElementById('t-month').textContent = sum ? fmt(sum) : '—';
+  document.getElementById('t-year').textContent  = sum ? fmt(sum*12) : '—';
+}
+
+function recalc(){ renderProducts(); }
+
+function renderAromas(){
+  const render = (id, arr, set) => {
+    document.getElementById(id).innerHTML = arr.map(a =>
+      `<div class="aroma-chip${set.has(a)?' on':''}" onclick="toggleAroma(this,'${id}','${a}')">${a}</div>`
+    ).join('');
+  };
+  render('ag-cos', AROMAS_COS, state.aromasCos);
+  render('ag-diff',AROMAS_DIFF,state.aromasDiff);
+  render('ag-spa', AROMAS_SPA, state.aromasSpa);
+}
+function toggleAroma(el, gid, name){
+  const map = {'ag-cos':state.aromasCos,'ag-diff':state.aromasDiff,'ag-spa':state.aromasSpa};
+  const s = map[gid];
+  if(s.has(name)){s.delete(name);el.classList.remove('on')}else{s.add(name);el.classList.add('on')}
+}
+
+function buildKPHtml(forPrint=false){
+  const disc = getDisc();
+  const name=v('c-name'), contact=v('c-contact'), city=v('c-city'), addr=v('c-address'), phone=v('c-phone'), manager=v('c-manager'), note=v('c-note');
+  const segName={restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг'}[state.segment];
+  const date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+
+  const metaParts=[];
+  if(name) metaParts.push(`<strong>${name}</strong>`);
+  if(segName) metaParts.push(segName);
+  const loc=[city,addr].filter(Boolean).join(', ');
+  if(loc) metaParts.push(loc);
+
+  const introParts=[];
+  if(contact) introParts.push(contact+', добрый день!');
+  else introParts.push('Добрый день!');
+  if(note) introParts.push(note);
+  else introParts.push('Направляем коммерческое предложение на продукцию Asense.');
+
+  let rows='', total=0;
+
+  const cosmetics = PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic');
+  const aromas    = PRODUCTS.filter(p=>state.checked[p.id]&&(p.type==='aroma'||p.type==='mini'));
+  const equips    = EQUIP.filter(e=>state.equip[e.id]);
+
+  if(cosmetics.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Косметика — канистры 5 000 мл</td></tr>`;
+    cosmetics.forEach(p=>{
+      const ap=adjPrice(p.price), q=calcCans(p.norm), s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} кан.</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(aromas.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Ароматизация</td></tr>`;
+    aromas.forEach(p=>{
+      const ap=adjPrice(p.price), q=state.qty[p.id]||1, s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} ${p.type==='mini'?'наб.':'шт.'}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(equips.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Оборудование</td></tr>`;
+    equips.forEach(e=>{
+      const ap=adjPrice(e.price), q=state.qty[e.id]||1, s=ap*q;
+      total+=s;
+      rows+=`<tr><td>${e.name}</td><td>${q} ${e.unit}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+
+  const customs = state.customItems.filter(c=>c.name);
+  if(customs.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Дополнительно</td></tr>`;
+    customs.forEach(c=>{
+      const p=c.price||0, q=c.qty||1, s=p*q;
+      total+=s;
+      const isFree = p<=1;
+      rows+=`<tr${isFree?' class="kp-free"':''}><td>${c.name}</td><td>${q} шт.</td><td>${isFree?'—':fmt(p)}</td><td style="${isFree?'color:#2E7D32;font-weight:500':''}">${isFree?'Бесплатно':fmt(s)}</td></tr>`;
+    });
+  }
+
+  rows+=`<tr class="kp-free"><td>Флаконы 300 мл</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Брендирование флаконов</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Помпы для канистр 5 л</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-tot"><td colspan="3">Итого к оплате</td><td>${fmt(total)}</td></tr>`;
+
+  let aromaNote='';
+  const ac=[...state.aromasCos], ad=[...state.aromasDiff,...state.aromasSpa];
+  if(ac.length||ad.length){
+    aromaNote='<div class="kp-aromanote">';
+    if(ac.length) aromaNote+=`<div><strong>Ароматы (косметика):</strong> ${ac.join(' · ')}</div>`;
+    if(ad.length) aromaNote+=`<div><strong>Ароматы (ароматизация):</strong> ${ad.join(' · ')}</div>`;
+    aromaNote+='</div>';
+  }
+
+  const managerLine = manager ? `<div style="margin-top:12px;font-size:11px;color:#999">Менеджер: ${manager}</div>` : '';
+
+  return `<div class="kp-doc" id="kp-printable">
+    <div class="kp-hdr">
+      <div>
+        <div class="kp-brand">As<em>é</em>nse</div>
+        <div class="kp-brand-sub">Производитель премиальной косметики</div>
+        ${metaParts.length ? `<div style="margin-top:8px;font-size:11px;color:#777">${metaParts.join(' · ')}</div>` : ''}
+      </div>
+      <div class="kp-req">
+        <strong>ООО «АСЕНС»</strong><br>
+        143422, МО, г.о. Красногорск<br>
+        ул. Полевая, стр. 35А<br>
+        ИНН 5024230644 ОГРН 1235000029659<br>
+        +7 (495) 970-86-40 · commerce@asense.store
+      </div>
+    </div>
+    <div class="kp-date">${date}</div>
+    <div class="kp-heading">Коммерческое предложение</div>
+    <p class="kp-intro">${introParts.join(' ')}</p>
+    <table class="kp-t">
+      <thead><tr><th>Продукт</th><th>Кол-во</th><th>Цена / ед.</th><th>Сумма</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${aromaNote}
+    ${managerLine}
+    <div class="kp-foot">
+      <strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>
+      АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974
+    </div>
+  </div>`;
+}
+
+function renderPreview(){
+  document.getElementById('preview-wrap').innerHTML = buildKPHtml();
+}
+
+function printKP(){
+  renderPreview();
+  const kp = document.getElementById('kp-printable');
+  if(!kp) return;
+  const w = window.open('','_blank','width=820,height=1000');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Asense</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;padding:0}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
+  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
+  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}
+  .kp-brand em{font-style:italic}
+  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
+  .kp-req strong{color:#1a1a1a}
+  .kp-date{font-size:11px;color:#999}
+  .kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
+  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
+  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  table.kp-t thead tr{background:#1A1A2E}
+  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+  table.kp-t thead th:not(:first-child){text-align:right}
+  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+  .kp-foot strong{color:#1a1a1a}
+  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
+  @media print{.print-btn{display:none}}
+  </style></head><body>
+  ${kp.outerHTML}
+  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
+function fmtXL(n){return Math.round(n).toLocaleString('ru-RU')+' ₽'}
+
+function xlCell(v, opts){
+  const c = typeof v === 'number' ? {t:'n',v} : {t:'s',v:String(v===null||v===undefined?'':v)};
+  const base = {
+    font:{name:'Arial',sz:opts.sz||10,bold:!!opts.bold,color:{rgb:opts.fg||'000000'}},
+    fill:{fgColor:{rgb:opts.bg||'FFFFFF'},patternType:'solid'},
+    alignment:{horizontal:opts.align||'left',vertical:'center',wrapText:true},
+    border:{
+      top:{style:'thin',color:{rgb:'DDDDDD'}},
+      bottom:{style:'thin',color:{rgb:'DDDDDD'}},
+      left:{style:'thin',color:{rgb:'DDDDDD'}},
+      right:{style:'thin',color:{rgb:'DDDDDD'}}
+    }
+  };
+  c.s = base;
+  return c;
+}
+
+function buildSheet(rows2d){
+  const ws = {};
+  let maxC = 0;
+  rows2d.forEach((row, ri)=>{
+    if(!row) return;
+    row.forEach((cell, ci)=>{
+      if(cell===null||cell===undefined) return;
+      const addr = XLSX.utils.encode_cell({r:ri,c:ci});
+      ws[addr] = (typeof cell === 'object' && cell.t) ? cell : xlCell(cell,{});
+      if(ci > maxC) maxC = ci;
+    });
+  });
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows2d.length-1,c:maxC}});
+  return ws;
+}
+
+function exportExcel(){
+  const disc = getDisc();
+  const clientName = v('c-name')||'Клиент';
+  const clientCity = v('c-city');
+  const clientContact = v('c-contact');
+  const date = new Date().toLocaleDateString('ru-RU');
+
+  const D  = '1A1A2E'; // dark
+  const G  = 'C9A84C'; // gold
+  const NV = '2E4057'; // navy
+  const CR = 'F5F2EC'; // cream
+  const WH = 'FFFFFF';
+  const GR = 'F9F7F4'; // light gray
+  const GB = 'E8F5E9'; // green bg
+  const GT = '2E7D32'; // green text
+
+  const hdr  = (v,bg,fg,sz,al) => xlCell(v,{bg:bg||D,fg:fg||WH,bold:true,sz:sz||10,align:al||'left'});
+  const sub  = (v)              => xlCell(v,{bg:D,fg:'AAAAAA',sz:9,align:'left'});
+  const sec  = (v)              => xlCell(v,{bg:NV,fg:WH,bold:true,sz:10});
+  const data = (v,bg,al)        => xlCell(v,{bg:bg||WH,fg:'222222',sz:10,align:al||'left'});
+  const num  = (v,bg)           => xlCell(v,{bg:bg||WH,fg:'222222',sz:10,align:'right'});
+  const tot  = (v,gold)         => xlCell(v,{bg:D,fg:gold?G:WH,bold:true,sz:gold?12:10,align:gold?'right':'left'});
+  const free = (v)              => xlCell(v,{bg:GB,fg:GT,sz:10});
+  const note = (v)              => xlCell(v,{bg:GR,fg:'666666',sz:9});
+
+  // ===== SHEET 1: КП =====
+  const rows = [];
+
+  // Header
+  const clientMeta = [clientName, clientCity, clientContact].filter(Boolean).join('  ·  ');
+  rows.push([hdr('ASENSE — Коммерческое предложение',D,G,14,'center'), null, null, null]);
+  rows.push([sub(clientMeta||'ООО «АСЕНС»'), null, null, sub(date)]);
+  rows.push([null,null,null,null]);
+  rows.push([hdr('Продукт',NV), hdr('Кол-во',NV,WH,10,'center'), hdr('Цена / ед.',NV,WH,10,'right'), hdr('Сумма',NV,WH,10,'right')]);
+
+  let total = 0;
+  const addSection = (label, items, isEquip) => {
+    if(!items.length) return;
+    rows.push([sec(label), sec(''), sec(''), sec('')]);
+    items.forEach((p,i)=>{
+      const ap = Math.round(p.price*(1+disc/100));
+      const q  = isEquip ? (state.qty[p.id]||1) : (p.norm>0 ? calcCans(p.norm) : (state.qty[p.id]||1));
+      const s  = ap*q;
+      total += s;
+      const aroma = state.productAroma[p.id];
+      const nm = p.name + (aroma?' ('+aroma+')':'');
+      const qStr = isEquip ? q+' '+(p.unit||'шт.') : (p.norm>0 ? q+' кан.' : q+' шт.');
+      const bg = i%2===0 ? CR : WH;
+      rows.push([data(nm,bg), data(qStr,bg,'center'), num(ap,bg), num(s,bg)]);
+    });
+  };
+
+  addSection('Косметика — канистры 5 000 мл', PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic'), false);
+  addSection('Ароматизация', PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='aroma'), false);
+  addSection('Миниатюры / Наборы', PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='mini'), false);
+  addSection('Флаконы 300 мл', PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='bottle300'), false);
+  addSection('Флаконы 500 мл', PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='bottle500'), false);
+  addSection('Оборудование', EQUIP.filter(e=>state.equip[e.id]), true);
+
+  const customs = state.customItems.filter(c=>c.name);
+  if(customs.length){
+    rows.push([sec('Дополнительно'), sec(''), sec(''), sec('')]);
+    customs.forEach((c,i)=>{
+      const p=c.price||0, q=c.qty||1, s=p*q;
+      total+=s;
+      const bg=i%2===0?CR:WH;
+      if(p<=1) rows.push([free(c.name), free(q+' шт.'), free('—'), free('Бесплатно')]);
+      else rows.push([data(c.name,bg), data(q+' шт.',bg,'center'), num(p,bg), num(s,bg)]);
+    });
+  }
+
+  rows.push([free('Флаконы 300 мл (первые 4 шт.)'), free('4 шт.'), free('—'), free('Бесплатно')]);
+  rows.push([free('Брендирование флаконов'), free('—'), free('—'), free('Бесплатно')]);
+  rows.push([free('Помпы для канистр 5 л'), free('—'), free('—'), free('Бесплатно')]);
+  rows.push([tot(''), tot(''), tot('ИТОГО К ОПЛАТЕ'), tot(total,true)]);
+  rows.push([null,null,null,null]);
+  rows.push([note('🚚 Доставка до терминалов СДЭК и ТК КИТ — бесплатно'), note(''), note(''), note('')]);
+  rows.push([note('ASENSE · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru'), note(''), note(''), note('')]);
+
+  const ws1 = buildSheet(rows);
+  ws1['!cols'] = [{wch:42},{wch:13},{wch:15},{wch:16}];
+  ws1['!rows'] = [{hpt:28},{hpt:14}];
+  ws1['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:3}},
+    {s:{r:1,c:0},e:{r:1,c:2}},
+    {s:{r:rows.length-3,c:0},e:{r:rows.length-3,c:3}},
+    {s:{r:rows.length-2,c:0},e:{r:rows.length-2,c:3}},
+  ];
+
+  // ===== SHEET 2: Расчёт расхода =====
+  const guests = getGuests(), days = getDays();
+  const scenarios = [{n:'50%',m:.5},{n:'70%',m:.7},{n:'100%',m:1}];
+  const cosm = PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic');
+
+  const r2 = [];
+  r2.push([hdr('ASENSE — Расчёт расхода косметики',D,G,13,'left'),null,null,null,null,null,null,null]);
+  r2.push([sub([clientName,'Гостей/день: '+guests,'Рабочих дней: '+days].filter(Boolean).join('  ·  ')),null,null,null,null,null,null,null]);
+  r2.push([null,null,null,null,null,null,null,null]);
+
+  const h2 = [hdr('Продукт',NV), hdr('Норма мл/гость',NV,WH,10,'center')];
+  scenarios.forEach(s=>{ h2.push(hdr('Канистр ('+s.n+')',NV,WH,10,'center')); h2.push(hdr('Сумма ('+s.n+')',NV,G,10,'right')); });
+  r2.push(h2);
+
+  cosm.forEach((p,pi)=>{
+    const ap = Math.round(p.price*(1+disc/100));
+    const bg = pi%2===0 ? CR : WH;
+    const row = [data(p.name,bg), data(p.norm+' мл',bg,'center')];
+    scenarios.forEach(sc=>{
+      const g = Math.round(guests*sc.m);
+      const q = Math.max(1,Math.ceil(g*days*p.norm/5000));
+      row.push(num(q,bg));
+      row.push(num(ap*q,bg));
+    });
+    r2.push(row);
+  });
+
+  // Totals row
+  const totR = [tot('ИТОГО'), tot('')];
+  scenarios.forEach(sc=>{
+    const g=Math.round(guests*sc.m);
+    let cans=0,sum=0;
+    cosm.forEach(p=>{ const ap=Math.round(p.price*(1+disc/100)); const q=Math.max(1,Math.ceil(g*days*p.norm/5000)); cans+=q; sum+=ap*q; });
+    totR.push(tot(cans));
+    totR.push(tot(sum,true));
+  });
+  r2.push(totR);
+  r2.push([null,null,null,null,null,null,null,null]);
+  r2.push([note('Прогноз затрат в месяц при текущих параметрах'),null,null,null,null,null,null,null]);
+
+  // Monthly/quarterly/annual summary
+  let monthSum=0;
+  cosm.forEach(p=>{ const ap=Math.round(p.price*(1+disc/100)); const q=calcCans(p.norm); monthSum+=ap*q; });
+  r2.push([data('В месяц',CR), null, num(monthSum,CR), null, null, null, null, null]);
+  r2.push([data('В квартал',WH), null, num(monthSum*3,WH), null, null, null, null, null]);
+  r2.push([data('В год',CR), null, num(monthSum*12,CR), null, null, null, null, null]);
+
+  const ws2 = buildSheet(r2);
+  ws2['!cols'] = [{wch:36},{wch:14},{wch:12},{wch:14},{wch:12},{wch:14},{wch:12},{wch:14}];
+  ws2['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:7}},
+    {s:{r:1,c:0},e:{r:1,c:7}},
+    {s:{r:r2.length-4,c:0},e:{r:r2.length-4,c:7}},
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, 'КП');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт расхода');
+  XLSX.writeFile(wb, 'КП_Asense_'+clientName.replace(/\s/g,'_')+'.xlsx');
+}
+
+
+function saveToHistory(){
+  const name = v('c-name')||'Без названия';
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const disc = getDisc();
+  let total = 0;
+  PRODUCTS.forEach(p=>{ if(!state.checked[p.id]) return; const ap=Math.round(p.price*(1+disc/100)); const q=p.norm>0?calcCans(p.norm):(state.qty[p.id]||1); total+=ap*q; });
+  EQUIP.forEach(e=>{ if(!state.equip[e.id]) return; total+=Math.round(e.price*(1+disc/100))*(state.qty[e.id]||1); });
+  state.customItems.forEach(c=>{ if(c.name) total+=(c.price||0)*(c.qty||1); });
+  saves.unshift({
+    id: Date.now(),
+    name,
+    segment: state.segment,
+    date: new Date().toLocaleDateString('ru-RU'),
+    total: total ? Math.round(total).toLocaleString('ru-RU')+' ₽' : null,
+    kpHtml: buildKPHtml(),
+    state: JSON.parse(JSON.stringify({...state, aromasCos:[...state.aromasCos], aromasDiff:[...state.aromasDiff], aromasSpa:[...state.aromasSpa]})),
+    inputs:{name,contact:v('c-contact'),city:v('c-city'),addr:v('c-address'),phone:v('c-phone'),manager:v('c-manager'),note:v('c-note'),guests:document.getElementById('p-guests').value,days:document.getElementById('p-days').value,disc:document.getElementById('p-disc').value}
+  });
+  localStorage.setItem('asense_kp', JSON.stringify(saves.slice(0,50)));
+  const btn = document.querySelector('[onclick="saveToHistory()"]');
+  if(btn){ const orig=btn.innerHTML; btn.innerHTML='<i class="ti ti-check"></i>Сохранено!'; btn.style.background='#2E7D32'; btn.style.color='#fff'; setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';btn.style.color='';},2000); }
+}
+
+function renderHistory(){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const list  = document.getElementById('history-list');
+  const empty = document.getElementById('history-empty');
+  if(!saves.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  const segNames={restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг'};
+  list.innerHTML = saves.map(s=>`
+    <div class="hist-item" onclick="loadSave(${s.id})">
+      <div>
+        <div class="hist-name">${s.name}</div>
+        <div class="hist-meta">${segNames[s.segment]||''} · ${s.date}${s.total?' · '+s.total:''}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="event.stopPropagation();previewSave(${s.id})"><i class="ti ti-eye"></i>КП</button>
+        <button class="btn btn-sm btn-dark" onclick="event.stopPropagation();loadSave(${s.id})"><i class="ti ti-folder-open"></i>Открыть</button>
+        <button class="btn btn-sm" style="color:red;border-color:#ffaaaa" onclick="event.stopPropagation();deleteSave(${s.id})"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`).join('');
+}
+
+function loadSave(id){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const s = saves.find(x=>x.id===id);
+  if(!s) return;
+  const inp = s.inputs;
+  document.getElementById('c-name').value    = inp.name||'';
+  document.getElementById('c-contact').value = inp.contact||'';
+  document.getElementById('c-city').value    = inp.city||'';
+  document.getElementById('c-address').value = inp.addr||'';
+  document.getElementById('c-phone').value   = inp.phone||'';
+  document.getElementById('c-manager').value = inp.manager||'';
+  document.getElementById('c-note').value    = inp.note||'';
+  document.getElementById('p-guests').value  = inp.guests||50;
+  document.getElementById('p-days').value    = inp.days||26;
+  document.getElementById('p-disc').value    = inp.disc||0;
+  state.segment = s.state.segment||'restaurant';
+  state.checked = s.state.checked||{};
+  state.equip   = s.state.equip||{};
+  state.qty     = s.state.qty||{};
+  state.aromasCos  = new Set(s.state.aromasCos||[]);
+  state.aromasDiff = new Set(s.state.aromasDiff||[]);
+  state.aromasSpa  = new Set(s.state.aromasSpa||[]);
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.seg-btn').forEach(b=>{
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+state.segment+"'")) b.classList.add('active');
+  });
+  document.getElementById('lbl-seats').textContent = SEG_LABELS[state.segment];
+  go('client');
+  recalc();
+}
+
+function deleteSave(id){
+  let saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  saves = saves.filter(x=>x.id!==id);
+  localStorage.setItem('asense_kp', JSON.stringify(saves));
+  renderHistory();
+}
+
+function previewSave(id){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const s = saves.find(x=>x.id===id);
+  if(!s) return;
+  const html = s.kpHtml || '<p style="padding:20px;color:#999">Предпросмотр недоступен для старых КП — откройте и пересохраните.</p>';
+  const w = window.open('','_blank','width=820,height=900');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП — ${s.name}</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f1;padding:20px}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
+  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
+  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}.kp-brand em{font-style:italic}
+  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}.kp-req strong{color:#1a1a1a}
+  .kp-date{font-size:11px;color:#999}.kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
+  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
+  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  table.kp-t thead tr{background:#1A1A2E}
+  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+  table.kp-t thead th:not(:first-child){text-align:right}
+  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+  .kp-foot strong{color:#1a1a1a}
+  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
+  @media print{.print-btn{display:none}body{background:#fff;padding:0}}
+  </style></head><body>
+  ${html}
+  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
+function exportBackupJSON(){
+  const data = {
+    version: 1,
+    exported: new Date().toISOString(),
+    kp: JSON.parse(localStorage.getItem('asense_kp')||'[]'),
+    prices: JSON.parse(localStorage.getItem('asense_prices')||'{}'),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.json';
+  a.click();
+}
+
+function exportBackupExcel(){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const prices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: КП
+  const rows1 = [['ID','Название','Сегмент','Дата','Итого','Город','Контакт','Менеджер']];
+  saves.forEach(s=>{
+    rows1.push([s.id, s.name, s.segment, s.date, s.total||'', s.inputs?.city||'', s.inputs?.contact||'', s.inputs?.manager||'']);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(rows1);
+  ws1['!cols']=[{wch:14},{wch:28},{wch:12},{wch:12},{wch:14},{wch:20},{wch:20},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'История КП');
+
+  // Sheet 2: Цены
+  const rows2 = [['ID продукта','Название','Цена базовая ₽','Цена текущая ₽']];
+  [...PRODUCTS,...EQUIP].forEach(p=>{
+    const base = BASE_PRICES[p.id];
+    const cur = prices[p.id] ?? base;
+    if(cur !== base) rows2.push([p.id, p.name, base, cur]);
+  });
+  if(rows2.length===1) rows2.push(['—','Все цены базовые','','']);
+  const ws2 = XLSX.utils.aoa_to_sheet(rows2);
+  ws2['!cols']=[{wch:16},{wch:36},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Изменённые цены');
+
+  XLSX.writeFile(wb, 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.xlsx');
+}
+
+function importBackup(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(!data.version) throw new Error('Неверный формат файла');
+      const existing = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+      const existingIds = new Set(existing.map(x=>x.id));
+      const newItems = (data.kp||[]).filter(x=>!existingIds.has(x.id));
+      const merged = [...newItems, ...existing].slice(0,50);
+      localStorage.setItem('asense_kp', JSON.stringify(merged));
+      if(data.prices && Object.keys(data.prices).length){
+        const curPrices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
+        localStorage.setItem('asense_prices', JSON.stringify({...data.prices, ...curPrices}));
+        customPrices = JSON.parse(localStorage.getItem('asense_prices'));
+        applyCustomPrices();
+      }
+      renderHistory();
+      const msg = newItems.length ? `Загружено ${newItems.length} новых КП!` : 'Все КП уже есть в истории.';
+      alert(msg);
+    } catch(err) {
+      alert('Ошибка загрузки: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function renderPrices(){
+  const priceRow = (p) => {
+    const base = BASE_PRICES[p.id];
+    const cur  = getPrice(p.id);
+    const changed = cur !== base;
+    return `<div style="display:grid;grid-template-columns:1fr 150px 110px;align-items:center;gap:10px;padding:8px 12px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:8px;background:${changed?'rgba(201,168,76,0.05)':'var(--surface)'};margin-bottom:5px">
+      <div>
+        <div style="font-size:13px">${p.name}</div>
+        <div style="font-size:11px;color:var(--muted)">${p.sub||p.unit||''} &nbsp;·&nbsp; базовая: <b>${fmt(base)}</b></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <input type="number" id="pr-${p.id}" value="${cur}" min="0" step="50"
+          style="width:100%;padding:6px 8px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:6px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit"
+          oninput="livePrice('${p.id}',this.value)">
+        <span style="font-size:11px;color:var(--muted)">₽</span>
+      </div>
+      <div style="font-size:11px;color:${changed?'var(--gold)':'var(--muted)'}">
+        ${changed?'✦ изменена':'базовая'}
+        ${changed?`<br><span style="cursor:pointer;text-decoration:underline;font-size:10px" onclick="resetOne('${p.id}')">сбросить</span>`:''}
+      </div>
+    </div>`;
+  };
+  const set = (id, items) => { const el=document.getElementById(id); if(el) el.innerHTML=items.map(priceRow).join(''); };
+  set('price-list-cosmetic', PRODUCTS.filter(p=>p.type==='cosmetic'));
+  set('price-list-aroma',    PRODUCTS.filter(p=>p.type==='aroma'));
+  set('price-list-mini',     PRODUCTS.filter(p=>p.type==='mini'));
+  set('price-list-b300',     PRODUCTS.filter(p=>p.type==='bottle300'));
+  set('price-list-b500',     PRODUCTS.filter(p=>p.type==='bottle500'));
+  set('price-list-equip',    EQUIP);
+}
+
+function livePrice(id, val){
+  const n = parseInt(val);
+  if(!isNaN(n) && n >= 0){
+    customPrices[id] = n;
+    [...PRODUCTS,...EQUIP].forEach(p=>{ if(p.id===id) p.price=n; });
+    localStorage.setItem('asense_prices', JSON.stringify(customPrices));
+    const el = document.getElementById('pr-'+id);
+    if(el) el.style.borderColor = n !== BASE_PRICES[id] ? 'var(--gold)' : 'var(--border)';
+  }
+}
+
+function savePrices(){
+  [...PRODUCTS,...EQUIP].forEach(p=>{
+    const el = document.getElementById('pr-'+p.id);
+    if(el){ const n=parseInt(el.value); if(!isNaN(n)&&n>=0){ customPrices[p.id]=n; p.price=n; } }
+  });
+  localStorage.setItem('asense_prices', JSON.stringify(customPrices));
+  renderPrices();
+  recalc();
+  const btn = event.target.closest('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-check"></i>Сохранено!';
+  btn.style.background = 'var(--green-t)';
+  setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';},2000);
+}
+
+function resetOne(id){
+  delete customPrices[id];
+  [...PRODUCTS,...EQUIP].forEach(p=>{ if(p.id===id) p.price=BASE_PRICES[id]; });
+  localStorage.setItem('asense_prices', JSON.stringify(customPrices));
+  renderPrices();
+  recalc();
+}
+
+function resetPrices(){
+  if(!confirm('Сбросить все цены к базовым из прайса?')) return;
+  customPrices = {};
+  localStorage.removeItem('asense_prices');
+  [...PRODUCTS,...EQUIP].forEach(p=>{ p.price=BASE_PRICES[p.id]; });
+  renderPrices();
+  recalc();
+}
+
+applyCustomPrices();
+renderProducts();
+</script>
+</body>
+</html>
