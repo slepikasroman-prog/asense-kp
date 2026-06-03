@@ -21,7 +21,29 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;background:var
 
 /* LAYOUT */
 .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
-@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}}
+@media(max-width:700px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .main{padding-bottom:60px}
+  .topbar{padding:10px 14px}
+  .topbar-title{font-size:14px}
+  .btn-sm{padding:5px 10px;font-size:11px}
+  .content{padding:14px}
+  .seg-tabs{gap:6px}
+  .seg-btn{padding:6px 10px;font-size:12px}
+  .params-row{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+  .prod-row{grid-template-columns:28px 1fr 70px 70px 70px !important;gap:6px;padding:7px 8px}
+  .prod-header{grid-template-columns:28px 1fr 70px 70px 70px;gap:6px;padding:3px 8px}
+  .totals{grid-template-columns:1fr 1fr;gap:8px}
+  .totals .tc:last-child{grid-column:1/-1}
+  .tc-val{font-size:18px}
+  .hist-item{flex-direction:column;align-items:flex-start;gap:8px}
+  .mobile-nav{display:flex !important}
+}
+@media(max-width:400px){
+  .prod-row{grid-template-columns:26px 1fr 60px 60px 60px !important;gap:4px;font-size:11px}
+  .topbar-actions .btn-sm span{display:none}
+}
 
 /* SIDEBAR */
 .sidebar{background:var(--dark);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
@@ -115,6 +137,10 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;background:var
 .history-list{display:flex;flex-direction:column;gap:8px}
 .hist-item{padding:12px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .15s}
 .hist-item:hover{border-color:var(--gold)}
+.mob-btn{background:none;border:none;color:rgba(255,255,255,0.5);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;cursor:pointer;padding:2px 8px;font-family:inherit;transition:color .15s}
+.mob-btn i{font-size:20px}
+.mob-btn.active{color:var(--gold)}
+.mob-btn:hover{color:#fff}
 .hist-name{font-size:13px;font-weight:500}
 .hist-meta{font-size:11px;color:var(--muted);margin-top:2px}
 
@@ -434,6 +460,18 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 </div><!-- /main -->
 </div><!-- /app -->
 
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark);border-top:1px solid rgba(255,255,255,0.1);z-index:100;padding:6px 0 8px">
+  <div style="display:flex;justify-content:space-around;align-items:center">
+    <button onclick="go('client')"   id="mob-client"   class="mob-btn"><i class="ti ti-building"></i><span>Клиент</span></button>
+    <button onclick="go('products')" id="mob-products" class="mob-btn"><i class="ti ti-box"></i><span>Продукты</span></button>
+    <button onclick="go('preview')"  id="mob-preview"  class="mob-btn"><i class="ti ti-file-text"></i><span>КП</span></button>
+    <button onclick="go('history')"  id="mob-history"  class="mob-btn"><i class="ti ti-clock"></i><span>История</span></button>
+    <button onclick="go('prices')"   id="mob-prices"   class="mob-btn"><i class="ti ti-tag"></i><span>Прайс</span></button>
+    <button onclick="go('help')"     id="mob-help"     class="mob-btn"><i class="ti ti-help-circle"></i><span>?</span></button>
+  </div>
+</nav>
+
 <script>
 const PRODUCTS = [
   // Канистры 5л
@@ -539,6 +577,9 @@ function go(id){
   if(id==='history')  renderHistory();
   if(id==='products') renderProducts();
   if(id==='prices')  renderPrices();
+  document.querySelectorAll('.mob-btn').forEach(function(b){b.classList.remove('active');});
+  const mob = document.getElementById('mob-'+id);
+  if(mob) mob.classList.add('active');
 }
 
 function setSeg(seg, el){
