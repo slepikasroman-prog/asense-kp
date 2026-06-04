@@ -744,9 +744,15 @@ function sbFetch(path, method, body){
 function getMgrEmail(){var p=JSON.parse(localStorage.getItem('asense_profile')||'{}');return p.email||null;}
 function syncKPToCloud(e){var em=getMgrEmail();if(!em)return;sbFetch('kp_history','POST',{id:e.id,manager_email:em,name:e.name,segment:e.segment,date:e.date,total:e.total||null,status:e.status||'new',kp_state:e.state||null,inputs:e.inputs||null}).catch(function(){});}
 function syncSaleToCloud(s){var em=getMgrEmail();if(!em)return;sbFetch('sales','POST',{id:s.id,manager_email:em,client:s.client,amount:s.amount,date:s.date,segment:s.segment,comment:s.comment||null}).catch(function(){});}
-function syncProfileToCloud(p){if(!p.email)return;sbFetch('manager_profiles','POST',{email:p.email,name:p.name||null,title:p.title||null,phone:p.phone||null,tg:p.tg||null,note:p.note||null,updated_at:new Date().toISOString()}).catch(function(){});}
+function syncProfileToCloud(p){
+  var key = p.email || (localStorage.getItem('asense_user')+'@asense');
+  if(!key) return;
+  sbFetch('manager_profiles','POST',{email:key,name:p.name||null,title:p.title||null,phone:p.phone||null,tg:p.tg||null,note:p.note||null,updated_at:new Date().toISOString()}).catch(function(){});
+}
 function loadFromCloud(){
-  var em=getMgrEmail();if(!em)return;
+  var p=JSON.parse(localStorage.getItem('asense_profile')||'{}');
+  var em = p.email || (localStorage.getItem('asense_user') ? localStorage.getItem('asense_user')+'@asense' : null);
+  if(!em)return;
   sbFetch('kp_history?manager_email=eq.'+encodeURIComponent(em)+'&order=created_at.desc&limit=50').then(function(r){return r.json();}).then(function(rows){
     if(!rows||!rows.length)return;
     var local=JSON.parse(localStorage.getItem('asense_kp')||'[]');
@@ -837,13 +843,30 @@ function doUserLogin(){
   var name = document.getElementById('login-name').value.trim();
   if(!name){ document.getElementById('login-name').focus(); return; }
   localStorage.setItem('asense_user', name);
-  // Save name to profile if not set
+  // Save name to profile
   var p = JSON.parse(localStorage.getItem('asense_profile')||'{}');
   if(!p.name){ p.name=name; localStorage.setItem('asense_profile', JSON.stringify(p)); }
   document.getElementById('login-screen').style.display='none';
-  // Update manager field
   var mf=document.getElementById('c-manager');
   if(mf&&!mf.value) mf.value=name;
+  // Save to Supabase by name as key, load cloud data
+  sbFetch('manager_profiles?name=eq.'+encodeURIComponent(name)+'&limit=1')
+    .then(function(r){return r.json();})
+    .then(function(rows){
+      if(rows && rows.length){
+        // Profile exists - restore it
+        var r = rows[0];
+        var p2 = {name:r.name||name, title:r.title||'', phone:r.phone||'', email:r.email||'', tg:r.tg||'', note:r.note||''};
+        localStorage.setItem('asense_profile', JSON.stringify(p2));
+        ['name','title','phone','email','tg','note'].forEach(function(k){
+          var el=document.getElementById('mgr-'+k); if(el&&p2[k]) el.value=p2[k];
+        });
+      } else {
+        // New user - create profile in Supabase
+        sbFetch('manager_profiles','POST',{email:name+'@asense', name:name, updated_at:new Date().toISOString()}).catch(function(){});
+      }
+      setTimeout(loadFromCloud, 500);
+    }).catch(function(){ setTimeout(loadFromCloud, 500); });
 }
 
 function showAdminLogin(){
