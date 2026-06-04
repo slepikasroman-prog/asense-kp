@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Asense — Генератор КП и База знаний</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
@@ -187,6 +190,23 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   .tc-val{font-size:16px}
   .hist-item{flex-direction:column;align-items:flex-start;gap:8px}
   .mobile-nav{display:flex!important}
+  /* Custom KP table */
+  #ckp-rows > div{grid-template-columns:1fr 55px 75px 65px 28px!important;gap:4px!important;padding:8px 6px!important}
+  #ckp-total-bar{grid-template-columns:1fr 55px 75px 65px 28px!important;padding:8px 6px!important}
+  /* Retail */
+  #ret-product-list > div{grid-template-columns:1fr 50px 70px 55px!important;gap:4px!important;font-size:12px}
+  #ret-cat-tabs{gap:4px}
+  #ret-cat-tabs button{font-size:10px!important;padding:5px 7px!important}
+  /* History items */
+  .hist-item{flex-direction:column;align-items:flex-start;gap:8px}
+  .hist-item > div:last-child{width:100%;flex-wrap:wrap}
+  /* Preview fields */
+  #sec-preview > div:not(.preview-wrap):not(.notice){grid-template-columns:1fr!important}
+  /* Profile form */
+  #sec-profile > div:first-child + div > div:first-child{grid-template-columns:1fr}
+  /* Topbar */
+  .topbar{padding:8px 10px}
+  .btn-gold{font-size:11px}
 }
 </style>
 </head>
@@ -329,13 +349,13 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 <!-- AROMA -->
 <div id="sec-aroma" style="display:none">
   <div class="sec-title">Ароматы косметики</div>
-  <div class="aroma-grid" id="aroma-cos"></div>
+  <div class="aroma-grid" id="ag-cos"></div>
   <div class="divider"></div>
   <div class="sec-title">Ароматы диффузоров</div>
-  <div class="aroma-grid" id="aroma-diff"></div>
+  <div class="aroma-grid" id="ag-diff"></div>
   <div class="divider"></div>
   <div class="sec-title">SPA ароматы</div>
-  <div class="aroma-grid" id="aroma-spa"></div>
+  <div class="aroma-grid" id="ag-spa"></div>
 </div>
 
 <!-- PREVIEW -->
@@ -559,6 +579,7 @@ function hideSplash(){
   var s=document.getElementById('splash');
   if(s&&s.style.display!=='none'){s.style.opacity='0';setTimeout(function(){s.style.display='none';},500);}
 }
+setTimeout(hideSplash, 2000);
 function loadProfile(){
   try{
     var p=JSON.parse(localStorage.getItem('asense_profile')||'{}');
@@ -667,10 +688,17 @@ const calcCans  = norm => Math.max(1, Math.ceil(getGuests()*getDays()*norm/5000)
 
 function go(id){
   SECTIONS.forEach(s=>{
-    document.getElementById('sec-'+s).style.display = s===id?'':'none';
-    document.getElementById('nav-'+s).classList.toggle('active', s===id);
+    var sec=document.getElementById('sec-'+s);
+    var nav=document.getElementById('nav-'+s);
+    if(sec) sec.style.display = s===id?'':'none';
+    if(nav) nav.classList.toggle('active', s===id);
   });
-  document.getElementById('topbar-title').textContent = TITLES[id];
+  var tt=document.getElementById('topbar-title');
+  if(tt) tt.textContent = TITLES[id]||id;
+  // mobile nav
+  document.querySelectorAll('.mob-btn').forEach(function(b){b.classList.remove('active');});
+  var mob=document.getElementById('mob-'+id);
+  if(mob) mob.classList.add('active');
   if(id==='preview')  renderPreview();
   if(id==='aroma')    renderAromas();
   if(id==='history')  renderHistory();
@@ -682,8 +710,8 @@ function go(id){
   if(id==='kb')      renderKB();
   if(id==='profile') loadProfile();
   document.querySelectorAll('.mob-btn').forEach(function(b){b.classList.remove('active');});
-  const mob = document.getElementById('mob-'+id);
-  if(mob) mob.classList.add('active');
+  var mob2 = document.getElementById('mob-'+id);
+  if(mob2) mob2.classList.add('active');
 }
 
 function setSeg(seg, el){
@@ -842,8 +870,14 @@ function toggleAroma(el, gid, name){
 }
 
 function buildKPHtml(forPrint=false){
-  const pvDisc = document.getElementById('pv-discount');
-  const disc = pvDisc && pvDisc.value ? parseInt(pvDisc.value)||0 : getDisc();
+  const pvDisc     = document.getElementById('pv-discount');
+  const pvIntro    = document.getElementById('pv-intro');
+  const pvFootNote = document.getElementById('pv-footer-note');
+  const pvCondEl   = document.getElementById('pv-condition');
+  const disc           = pvDisc && pvDisc.value ? parseInt(pvDisc.value)||0 : getDisc();
+  const customIntro    = pvIntro ? pvIntro.value.trim() : '';
+  const footerNote     = pvFootNote ? pvFootNote.value.trim() : '';
+  const pvConditionVal = pvCondEl ? pvCondEl.value.trim() : '';
   const name=v('c-name'), contact=v('c-contact'), city=v('c-city'), addr=v('c-address'), phone=v('c-phone'), manager=v('c-manager'), note=v('c-note');
   const segName={restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг',fitness:'фитнес-клуб'}[state.segment];
   const date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
@@ -857,7 +891,8 @@ function buildKPHtml(forPrint=false){
   const introParts=[];
   if(contact) introParts.push(contact+', добрый день!');
   else introParts.push('Добрый день!');
-  if(note) introParts.push(note);
+  if(customIntro) introParts.push(customIntro);
+  else if(note) introParts.push(note);
   else introParts.push('Направляем коммерческое предложение на продукцию Asense.');
 
   let rows='', total=0;
