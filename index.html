@@ -783,10 +783,20 @@ function hideSplash(){
 function checkAuthAndInit(){
   var user = localStorage.getItem('asense_user');
   if(!user){
+    // Try get name from profile
+    var p = JSON.parse(localStorage.getItem('asense_profile')||'{}');
+    if(p.name){
+      // Auto-login with saved profile name
+      localStorage.setItem('asense_user', p.name);
+      return;
+    }
     // Skip splash, show login immediately
     var s=document.getElementById('splash');
     if(s){ s.style.display='none'; }
     document.getElementById('login-screen').style.display='flex';
+    // Pre-fill from profile
+    var nameEl = document.getElementById('login-name');
+    if(nameEl && p.name) nameEl.value = p.name;
   }
   // If admin, show admin button in header
   if(localStorage.getItem('asense_admin')==='1'){
