@@ -751,19 +751,6 @@ function renderPrices(){
   setList('price-list-b500',     PRODUCTS.filter(function(p){return p.type==='bottle500';}));
   setList('price-list-equip',    EQUIP);
 }
-function resetOne(id){
-  delete customPrices[id];
-  PRODUCTS.concat(EQUIP).forEach(function(p){ if(p.id===id) p.price=BASE_PRICES[id]; });
-  localStorage.setItem('asense_prices', JSON.stringify(customPrices));
-  renderPrices(); recalc();
-}
-function resetPrices2(){
-  if(!confirm('Сбросить все цены к базовым?')) return;
-  customPrices = {};
-  localStorage.removeItem('asense_prices');
-  PRODUCTS.concat(EQUIP).forEach(function(p){ p.price=BASE_PRICES[p.id]; });
-  renderPrices(); recalc();
-}
 
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
