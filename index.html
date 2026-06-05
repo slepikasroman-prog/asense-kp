@@ -1486,141 +1486,142 @@ function exportExcel(){
   // ============================================================
   var r2 = [];
   var m2 = [];
+  var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+  var segLabel = segNames[state.segment] || '';
+  var prodNames = cosm.map(function(p){return p.name.replace(' Asense','');}).join(' + ');
 
-  const scenarios = [{n:'50%',m:0.5},{n:'70%',m:0.7},{n:'100%',m:1.0}];
+  // TITLE
+  r2.push([hdr('ASENSE — Расчёт косметики',D,G,14),null,null,null,null,null]);
+  r2.push([sub(segLabel+' · '+guests+' гостей/день · '+prodNames+' · Период: 1 месяц'),null,null,null,null,null]);
+  r2.push([null,null,null,null,null,null]);
+  m2.push({s:{r:0,c:0},e:{r:0,c:5}});
+  m2.push({s:{r:1,c:0},e:{r:1,c:5}});
 
-  r2.push([hdr('ASENSE — Расчёт расхода косметики по зонам',D,G,13),null,null,null,null,null,null,null,null,null]);
-  r2.push([sub([cName,'Гостей/день: '+guests,'Рабочих дней: '+days].filter(Boolean).join('  ·  ')),null,null,null,null,null,null,null,null,null]);
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:0,c:0},e:{r:0,c:9}});
-  m2.push({s:{r:1,c:0},e:{r:1,c:9}});
-
-  // Params block (yellow — editable)
-  r2.push([hdr('Параметры (редактировать)',NV),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:3,c:0},e:{r:3,c:9}});
-
-  r2.push([dat('Гостей в день (номерной фонд)'),null,inp(guests),null,dat('Рабочих дней в месяц'),null,inp(days),null,null,null]);
-  r2.push([dat('Гостей в день (фитнес/спа)'),null,inp(Math.round(guests*0.3)),null,dat('Скидка %'),null,inp(disc),null,null,null]);
-
-  const GR_ROW = 4; // row index of guests (1-based = 5, 0-based = 4)
-  const FIT_ROW = 5;
-  const DAYS_COL = 'G'; // col index
-  const DISC_COL = 'G';
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // --- ЗОНА 1: НОМЕРНОЙ ФОНД ---
-  r2.push([hdr('ЗОНА 1 — Номерной фонд / Стандартные номера',NV,WH,11),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const hdrRow2 = [dat('Продукт',NV.replace('2E4057','F0F4F8')),dat('Норма мл/гость',NV.replace('2E4057','F0F4F8'),'center')];
-  scenarios.forEach(function(s){
-    hdrRow2.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
-    hdrRow2.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
+  // ПАРАМЕТРЫ
+  r2.push([hdr('ПАРАМЕТРЫ ОБЪЕКТА',NV),null,null,null,null,null]);
+  m2.push({s:{r:3,c:0},e:{r:3,c:5}});
+  r2.push([dat('Гостей в день'),null,inp(guests),dat('чел.'),null,null]);
+  r2.push([dat('Дней в месяце'),null,inp(days),null,null,null]);
+  cosm.forEach(function(p,i){
+    var sn = getNorm(p.id)||p.norm;
+    r2.push([dat('Расход '+p.name.replace(' Asense','')+' на 1 гостя'),null,inp(sn),dat('мл'),null,null]);
   });
-  hdrRow2.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
-  r2.push(hdrRow2);
+  if(disc>0) r2.push([dat('Скидка'),null,inp(disc),dat('%'),null,null]);
+  r2.push([null,null,null,null,null,null]);
 
-  cosm.forEach(function(p,pi){
-    const ap = Math.round(p.price*(1-disc/100));
-    const bg = pi%2===0?CR:WH;
-    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
-    const ri = r2.length+1;
-    scenarios.forEach(function(sc,si){
-      // Formula: =MAX(1,ROUNDUP(C5*G5*norm/5000,0)) where C5=guests, G5=days
-      const gRef = 'C5'; const dRef = 'G5';
-      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
-      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
-      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
-      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
-    });
-    // В год = sum at 100% * 12
-    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
-    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
-    r2.push(row);
-  });
-
-  // Subtotal hotel
-  const htStart = 9; // approx
-  const htEnd = r2.length;
+  // РАСЧЁТ РАСХОДА
+  var calcStartRow = r2.length;
+  r2.push([hdr('РАСЧЁТ РАСХОДА НА МЕСЯЦ',NV),null,null,null,null,null]);
+  m2.push({s:{r:calcStartRow,c:0},e:{r:calcStartRow,c:5}});
   r2.push([
-    tot('ИТОГО номерной фонд'),tot(''),
-    xlCell('=SUM(C'+htStart+':C'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(D'+htStart+':D'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(E'+htStart+':E'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(F'+htStart+':F'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(G'+htStart+':G'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(H'+htStart+':H'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('Продукт',{bg:'3D5A80',fg:WH,bold:true,sz:10}),
+    xlCell('Расход мл/гость',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('Расход в месяц, л',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('Канистр 5 л',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('Цена канистры, ₽',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('Сумма в месяц, ₽',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'})
+  ]);
+
+  var cosmSumRefs = [];
+  cosm.forEach(function(p,i){
+    var sn = getNorm(p.id)||p.norm;
+    var ap = Math.round(p.price*(1-disc/100));
+    var q = state.qty[p.id] || calcCans(sn);
+    var litres = Math.round(guests*days*sn/100)/10;
+    var bg = i%2===0?CR:WH;
+    var ri = r2.length+1;
+    r2.push([
+      dat(p.name,bg),
+      dat(sn+' мл',bg,'center'),
+      xlCell(litres,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}),
+      inp(q),
+      inp(ap),
+      xlCell('=D'+ri+'*E'+ri,{bg:bg,fg:'1a1a1a',sz:10,align:'right'})
+    ]);
+    cosmSumRefs.push('F'+ri);
+  });
+  var cosmTotalRow = r2.length+1;
+  r2.push([
+    tot('ИТОГО косметика в месяц'),tot(''),tot(''),
+    xlCell('=SUM(D'+(calcStartRow+3)+':D'+(r2.length)+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
     tot(''),
-    xlCell('=SUM(J'+htStart+':J'+htEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
+    xlCell(cosmSumRefs.length?('='+cosmSumRefs.join('+')):0,{bg:D,fg:G,bold:true,sz:12,align:'right'})
   ]);
+  r2.push([null,null,null,null,null,null]);
 
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // --- ЗОНА 2: ФИТНЕС / СПА ---
-  r2.push([hdr('ЗОНА 2 — Фитнес / СПА',NV,WH,11),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const hdrRow3 = [dat('Продукт'),dat('Норма мл/гость','','center')];
-  scenarios.forEach(function(s){
-    hdrRow3.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
-    hdrRow3.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
-  });
-  hdrRow3.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
-  r2.push(hdrRow3);
-
-  cosm.forEach(function(p,pi){
-    const ap = Math.round(p.price*(1-disc/100));
-    const bg = pi%2===0?'EDE9FE':WH;
-    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
-    const ri = r2.length+1;
-    scenarios.forEach(function(sc,si){
-      const gRef = 'C6'; // fitness guests row
-      const dRef = 'G5';
-      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
-      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
-      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
-      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
+  // ОБОРУДОВАНИЕ
+  if(selEquip.length){
+    var eqStartRow = r2.length;
+    r2.push([hdr('ОБОРУДОВАНИЕ (разовая закупка)',NV),null,null,null,null,null]);
+    m2.push({s:{r:eqStartRow,c:0},e:{r:eqStartRow,c:5}});
+    r2.push([
+      xlCell('Позиция',{bg:'3D5A80',fg:WH,bold:true,sz:10}),
+      null,
+      xlCell('Кол-во',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}),
+      xlCell('Цена/ед., ₽',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}),
+      null,
+      xlCell('Сумма, ₽',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'})
+    ]);
+    var eqSumRefs = [];
+    selEquip.forEach(function(e,i){
+      var ap = Math.round(e.price*(1-disc/100));
+      var q = state.qty[e.id]||1;
+      var bg = i%2===0?CR:WH;
+      var ri = r2.length+1;
+      r2.push([dat(e.name,bg),null,inp(q),inp(ap),null,xlCell('=C'+ri+'*D'+ri,{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
+      eqSumRefs.push('F'+ri);
     });
-    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
-    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
-    r2.push(row);
-  });
+    // Free items if total >= 30000
+    var estT2 = 0;
+    cosm.forEach(function(p){ var sn=getNorm(p.id)||p.norm; estT2+=Math.round(p.price*(1-disc/100))*(state.qty[p.id]||calcCans(sn)); });
+    selEquip.forEach(function(e){ estT2+=Math.round(e.price*(1-disc/100))*(state.qty[e.id]||1); });
+    if(estT2 >= 30000){
+      r2.push([free('Флакон 300 мл (закалённое стекло)'),null,free('4'),free('—'),null,free('Бесплатно')]);
+      r2.push([free('Помпа для канистры 5 л'),null,free('2'),free('—'),null,free('Бесплатно')]);
+    }
+    var eqTotalRow = r2.length+1;
+    r2.push([
+      tot('ИТОГО оборудование (разово)'),tot(''),tot(''),tot(''),tot(''),
+      xlCell(eqSumRefs.length?('='+eqSumRefs.join('+')):0,{bg:D,fg:G,bold:true,sz:11,align:'right'})
+    ]);
+    r2.push([null,null,null,null,null,null]);
+  }
 
-  const fitStart = htEnd+4;
-  const fitEnd = r2.length;
-  r2.push([
-    tot('ИТОГО фитнес/спа'),tot(''),
-    xlCell('=SUM(C'+fitStart+':C'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(D'+fitStart+':D'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(E'+fitStart+':E'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(F'+fitStart+':F'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(G'+fitStart+':G'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(H'+fitStart+':H'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    tot(''),
-    xlCell('=SUM(J'+fitStart+':J'+fitEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
-  ]);
+  // СВОДКА
+  var svStartRow = r2.length;
+  r2.push([hdr('СВОДКА',NV),null,null,null,null,null]);
+  m2.push({s:{r:svStartRow,c:0},e:{r:svStartRow,c:5}});
+  var cosmRef = 'F'+cosmTotalRow;
+  r2.push([dat('Ежемесячный расход (косметика)'),null,null,null,null,xlCell('='+cosmRef,{bg:WH,fg:'1a1a1a',bold:true,sz:11,align:'right'})]);
+  if(selEquip.length){
+    var eqRef = 'F'+(svStartRow-1);
+    r2.push([dat('Оборудование (разовый платёж)'),null,null,null,null,xlCell('='+eqRef,{bg:WH,fg:'1a1a1a',bold:true,sz:11,align:'right'})]);
+    var firstOrderRow = r2.length+1;
+    r2.push([xlCell('ИТОГО первый заказ',{bg:D,fg:G,bold:true,sz:11}),null,null,null,null,xlCell('=F'+(firstOrderRow-2)+'+F'+(firstOrderRow-1),{bg:D,fg:G,bold:true,sz:13,align:'right'})]);
+  } else {
+    r2.push([xlCell('ИТОГО первый заказ',{bg:D,fg:G,bold:true,sz:11}),null,null,null,null,xlCell('='+cosmRef,{bg:D,fg:G,bold:true,sz:13,align:'right'})]);
+  }
+  r2.push([null,null,null,null,null,null]);
 
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // Grand total
-  r2.push([
-    tot('ИТОГО ПО ВСЕМ ЗОНАМ'),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),
-    xlCell('=J'+(htEnd+1)+'+J'+(fitEnd+1),{bg:D,fg:G,bold:true,sz:13,align:'right'}),
-  ]);
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-  r2.push([xlCell('🟡 Измените гостей/день и скидку в строках 5-6 — все расчёты пересчитаются',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+  // ПРОГНОЗ ЗАКУПОК
+  var progStartRow = r2.length;
+  r2.push([hdr('ПРОГНОЗ ЗАКУПОК',NV),null,null,null,null,null]);
+  m2.push({s:{r:progStartRow,c:0},e:{r:progStartRow,c:5}});
+  r2.push([dat('В месяц'),null,null,null,null,xlCell('='+cosmRef,{bg:WH,fg:'1a1a1a',bold:true,sz:11,align:'right'})]);
+  r2.push([dat('В квартал'),null,null,null,null,xlCell('='+cosmRef+'*3',{bg:WH,fg:'1a1a1a',bold:true,sz:11,align:'right'})]);
+  r2.push([xlCell('В год',{bg:D,fg:G,bold:true,sz:11}),null,null,null,null,xlCell('='+cosmRef+'*12',{bg:D,fg:G,bold:true,sz:13,align:'right'})]);
+  r2.push([null,null,null,null,null,null]);
+  r2.push([xlCell('* Жёлтые ячейки — параметры для изменения. Рекомендуется отследить фактический расход в первый месяц.',{bg:GR,fg:'888888',sz:9,wrap:true}),null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:5}});
 
   const ws2 = buildSheet(r2, m2,
-    [{wch:36},{wch:14},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:14}],
-    [{hpt:24},{hpt:13}]
+    [{wch:38},{wch:16},{wch:16},{wch:14},{wch:16},{wch:16}],
+    [{hpt:28},{hpt:14}]
   );
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws1, 'КП');
-  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт расхода');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт косметики');
   XLSX.writeFile(wb, 'КП_Asense_'+cName.replace(/\s/g,'_')+'.xlsx');
 }
 
