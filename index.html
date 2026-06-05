@@ -769,7 +769,6 @@ function loadFromCloud(){
   }).catch(function(){});
 }
 
-
 // Stub functions available immediately for inline onclick handlers
 function hideSplash(){
   var s=document.getElementById('splash');
@@ -1182,6 +1181,793 @@ function loadSave(id){
   renderProducts(); recalc(); go('client');
 }
 
+// Stub functions available immediately for inline onclick handlers
+function hideSplash(){
+  var s=document.getElementById('splash');
+  if(s&&s.style.display!=='none'){s.style.opacity='0';setTimeout(function(){s.style.display='none';},500);}
+}
+function loadProfile(){
+  try{
+    var p=JSON.parse(localStorage.getItem('asense_profile')||'{}');
+    ['name','title','phone','email','tg','note'].forEach(function(k){
+      var el=document.getElementById('mgr-'+k);
+      if(el&&p[k]) el.value=p[k];
+    });
+    var mf=document.getElementById('c-manager');
+    if(mf&&!mf.value&&p.name) mf.value=p.name;
+  }catch(e){}
+}
+
+
+const FAQ_DATA = [
+  {
+    q: "Какой минимальный заказ?",
+    a: "Минимальный заказ — от 15 000 ₽. При заказе от 30 000 ₽ флаконы, помпы и брендирование — бесплатно."
+  },
+  {
+    q: "Сколько стоит доставка?",
+    a: "Доставка бесплатна до терминалов СДЭК и ТК КИТ по всей России. Доставка до двери рассчитывается отдельно по тарифам транспортной компании."
+  },
+  {
+    q: "Можно ли нанести логотип на флаконы?",
+    a: "Да. Брендирование флаконов (от 30 000 ₽) (нанесение логотипа) включено бесплатно при первом заказе. Повторное брендирование рассчитывается по запросу."
+  },
+  {
+    q: "Как долго производится заказ?",
+    a: "Стандартный срок производства и отгрузки — 5-10 рабочих дней с момента оплаты. Для крупных тиражей с брендированием — 14-21 день."
+  },
+  {
+    q: "Можно ли получить образцы?",
+    a: "Да, высылаем образцы продукции. Стоимость и условия уточняйте у менеджера. Telegram: @Asense_store_b2b"
+  },
+  {
+    q: "Какой срок годности у продукции?",
+    a: "Срок годности — 36 месяцев с даты производства. Все продукты сертифицированы по российским стандартам."
+  },
+  {
+    q: "Как рассчитывается расход канистры 5л?",
+    a: "Формула: гостей/день × рабочих дней × норма мл на гостя ÷ 5000 = канистр в месяц. Норма: мыло ~18 мл, гель ~18 мл, шампунь ~11 мл, кондиционер ~7 мл, лосьон ~10 мл на гостя."
+  },
+  {
+    q: "Есть ли скидки при больших объёмах?",
+    a: "Да. При объёме от 50 000 ₽/мес — скидка 5%. От 100 000 ₽/мес — скидка 10%. Индивидуальные условия обсуждаются с менеджером."
+  },
+  {
+    q: "Какие форматы флаконов доступны?",
+    a: "30 мл (миниатюры), 125 мл (диффузор), 300 мл, 500 мл (матовое стекло), 1000 мл, 5000 мл (канистры). Антивандальные кронштейны для настенного крепления — на 1, 2 и 3 флакона."
+  },
+  {
+    q: "Работаете ли вы с рассрочкой оплаты?",
+    a: "Работаем по предоплате 100% для новых клиентов. Для постоянных клиентов с историей заказов от 3 месяцев возможна отсрочка платежа. Уточняйте у менеджера."
+  },
+  {
+    q: "Что такое аромамашина и чем отличается от диффузора?",
+    a: "Диффузор 125 мл — пассивный прибор с палочками, площадь до 20 м². Аромамашина профессиональная — активный распылитель, площадь до 100 м², регулируемая интенсивность. Подходит для лобби, залов, коридоров."
+  },
+  {
+    q: "Можно ли выбрать несколько ароматов для разных зон?",
+    a: "Да. Для каждой зоны можно выбрать отдельный аромат. В приложении выбор аромата есть у каждого продукта. Мыло-скраб доступно только в аромате Vetiver & Rosemary."
+  },
+];
+
+function renderFAQ(){
+  var el = document.getElementById('faq-list');
+  if(!el) return;
+  el.innerHTML = '';
+  FAQ_DATA.forEach(function(item, i){
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)';
+
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;-webkit-tap-highlight-color:transparent';
+    hdr.innerHTML = '<div style="font-size:13px;font-weight:500;color:var(--text)">'+item.q+'</div>'
+      +'<div style="font-size:20px;color:var(--gold);flex-shrink:0;line-height:1;min-width:24px;text-align:center" id="faq-icon-'+i+'">+</div>';
+
+    var body = document.createElement('div');
+    body.id = 'faq-ans-'+i;
+    body.style.cssText = 'display:none;padding:0 16px 14px;font-size:13px;color:var(--muted);line-height:1.65;border-top:1px solid var(--border)';
+    body.textContent = item.a;
+
+    hdr.addEventListener('click', function(){
+      var open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      var icon = document.getElementById('faq-icon-'+i);
+      if(icon) icon.textContent = open ? '+' : '−';
+    });
+
+    wrap.appendChild(hdr);
+    wrap.appendChild(body);
+    el.appendChild(wrap);
+  });
+}
+
+
+
+function getProfile(){
+  return JSON.parse(localStorage.getItem('asense_profile')||'{}');
+}
+
+function saveProfile(){
+  var p = {
+    name:  document.getElementById('mgr-name').value.trim(),
+    title: document.getElementById('mgr-title').value.trim(),
+    phone: document.getElementById('mgr-phone').value.trim(),
+    email: document.getElementById('mgr-email').value.trim(),
+    tg:    document.getElementById('mgr-tg').value.trim(),
+    note:  document.getElementById('mgr-note').value.trim(),
+  };
+  localStorage.setItem('asense_profile', JSON.stringify(p));
+  // Auto-fill manager field
+  var mgrField = document.getElementById('c-manager');
+  if(mgrField && p.name) mgrField.value = p.name;
+  var saved = document.getElementById('profile-saved');
+  if(saved){ saved.style.display='block'; setTimeout(function(){saved.style.display='none';},3000); }
+}
+
+function clearProfile(){
+  localStorage.removeItem('asense_profile');
+  ['mgr-name','mgr-title','mgr-phone','mgr-email','mgr-tg','mgr-note'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+}
+
+
+// ===== CUSTOM KP (свободное составление) =====
+var ckpRows = [];
+var ckpIdCounter = 0;
+
+function addCustomKPRow(name, qty, price){
+  ckpIdCounter++;
+  ckpRows.push({id:ckpIdCounter, name:name||'', qty:qty||1, price:price||0});
+  renderCKPRows();
+}
+
+function removeCustomKPRow(id){
+  ckpRows = ckpRows.filter(function(r){return r.id!==id;});
+  renderCKPRows();
+}
+
+function updateCKPRow(id, field, val){
+  ckpRows.forEach(function(r){if(r.id===id) r[field]=field==='name'?val:+val;});
+  updateCKPTotal();
+}
+
+function renderCKPRows(){
+  var el = document.getElementById('ckp-rows');
+  if(!el) return;
+  if(!ckpRows.length){
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Нажмите «+ Добавить строку» или «📦 Из каталога»</div>';
+    updateCKPTotal();
+    return;
+  }
+  el.innerHTML = '';
+  ckpRows.forEach(function(r){
+    var row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 90px 90px 36px;gap:8px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;align-items:center;margin-bottom:2px';
+    var S = 'padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-family:inherit;width:100%';
+    function inp(type,val,extra){
+      var el=document.createElement('input');
+      el.type=type; el.value=val; el.style.cssText=S+(extra||'');
+      return el;
+    }
+    var nameEl = inp('text',r.name,'font-size:12px;');
+    nameEl.placeholder='Название позиции';
+    nameEl.addEventListener('input',function(){updateCKPRow(r.id,'name',this.value);});
+
+    var qtyEl = inp('number',r.qty,'font-size:12px;text-align:center;');
+    qtyEl.min='0';
+    qtyEl.addEventListener('input',function(){updateCKPRow(r.id,'qty',this.value);renderCKPRows();});
+
+    var priceEl = inp('number',r.price,'font-size:12px;text-align:right;');
+    priceEl.min='0';
+    priceEl.addEventListener('input',function(){updateCKPRow(r.id,'price',this.value);renderCKPRows();});
+
+    var sumEl = document.createElement('div');
+    sumEl.style.cssText='font-size:12px;font-weight:500;text-align:right;color:var(--text)';
+    sumEl.textContent=(r.qty*r.price).toLocaleString('ru-RU')+' ₽';
+
+    var delEl = document.createElement('button');
+    delEl.textContent='×';
+    delEl.style.cssText='background:none;border:none;color:#e44;cursor:pointer;font-size:18px;padding:0;line-height:1';
+    delEl.addEventListener('click',function(){removeCustomKPRow(r.id);});
+
+    [nameEl,qtyEl,priceEl,sumEl,delEl].forEach(function(c){row.appendChild(c);});
+    el.appendChild(row);
+  });
+  updateCKPTotal();
+}
+
+function updateCKPTotal(){
+  var total = ckpRows.reduce(function(s,r){return s+r.qty*r.price;},0);
+  var el = document.getElementById('ckp-total');
+  if(el) el.textContent = Math.round(total).toLocaleString('ru-RU')+' ₽';
+}
+
+function addCustomKPProduct(){
+  var picker = document.getElementById('ckp-picker');
+  var list = document.getElementById('ckp-picker-list');
+  if(!picker||!list) return;
+  picker.style.display = picker.style.display==='none'?'block':'none';
+  if(picker.style.display==='none') return;
+  var allProds = PRODUCTS.map(function(p){return {name:p.name+' ('+p.sub+')',price:p.price};})
+    .concat(EQUIP.map(function(e){return {name:e.name,price:e.price};}));
+  list.innerHTML = '';
+  allProds.forEach(function(p){
+    var div = document.createElement('div');
+    div.style.cssText='padding:7px 10px;cursor:pointer;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;border:1px solid var(--border);background:var(--surface);margin-bottom:3px';
+    var nameSpan = document.createElement('span');
+    nameSpan.style.color='var(--text)';
+    nameSpan.textContent=p.name;
+    var priceSpan = document.createElement('span');
+    priceSpan.style.cssText='color:var(--gold);font-weight:500;white-space:nowrap';
+    priceSpan.textContent=p.price.toLocaleString('ru-RU')+' ₽';
+    div.appendChild(nameSpan);
+    div.appendChild(priceSpan);
+    div.addEventListener('click',function(){pickCKPProduct(p.name,p.price);});
+    list.appendChild(div);
+  });
+}
+
+function pickCKPProduct(name, price){
+  addCustomKPRow(name, 1, price);
+  document.getElementById('ckp-picker').style.display='none';
+}
+
+function renderCustomKP(){
+  renderCKPRows();
+  // Pre-fill client from main form
+  var cname = document.getElementById('c-name');
+  var ccontact = document.getElementById('c-contact');
+  var ccity = document.getElementById('c-city');
+  var ckpClient = document.getElementById('ckp-client');
+  var ckpContact = document.getElementById('ckp-contact');
+  var ckpCity = document.getElementById('ckp-city');
+  if(ckpClient && cname && !ckpClient.value) ckpClient.value = cname.value;
+  if(ckpContact && ccontact && !ckpContact.value) ckpContact.value = ccontact.value;
+  if(ckpCity && ccity && !ckpCity.value) ckpCity.value = ccity.value;
+}
+
+function buildCustomKPHtml(){
+  var client = document.getElementById('ckp-client').value.trim();
+  var contact = document.getElementById('ckp-contact').value.trim();
+  var city = document.getElementById('ckp-city').value.trim();
+  var note = document.getElementById('ckp-note').value.trim();
+  var date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  var total = ckpRows.reduce(function(s,r){return s+r.qty*r.price;},0);
+  var p = getProfile();
+
+  var metaParts = [];
+  if(client) metaParts.push('<strong>'+client+'</strong>');
+  if(city) metaParts.push(city);
+  if(contact) metaParts.push(contact);
+
+  var rows = ckpRows.filter(function(r){return r.name;}).map(function(r,i){
+    var bg = i%2===0?'background:#F5F2EC':'';
+    var isFree = r.price<=1;
+    return '<tr style="'+bg+'">'
+      +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee">'+r.name+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee;text-align:center">'+r.qty+' шт.</td>'
+      +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee;text-align:right">'+(isFree?'—':r.price.toLocaleString('ru-RU')+' ₽')+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee;text-align:right;font-weight:500">'+(isFree?'<span style="color:#2E7D32">Бесплатно</span>':(r.qty*r.price).toLocaleString('ru-RU')+' ₽')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var mgrLine = '';
+  if(p.name) mgrLine = '<br><strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · '+p.tg:'');
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Asense'+(client?' — '+client:'')+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:36px 40px}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}'
+    +'.brand{font-size:26px;font-weight:300;letter-spacing:4px}.brand em{font-style:italic}'
+    +'.req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}.req strong{color:#1a1a1a}'
+    +'table{width:100%;border-collapse:collapse;font-size:12px}'
+    +'thead tr{background:#1A1A2E}thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}'
+    +'thead th:not(:first-child){text-align:right}'
+    +'.tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}'
+    +'.tot td:last-child{color:#C9A84C;font-size:14px;text-align:right}'
+    +'.foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}'
+    +'.foot strong{color:#1a1a1a}'
+    +'.print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}'
+    +'@media print{.print-btn{display:none}body{padding:20px}}</style></head><body>'
+    +'<div class="hdr"><div>'
+    +'<div class="brand"><img src="data:image/png;base64,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" style="height:26px;filter:brightness(0)" alt="Asense"></div>'
+    +'<div style="font-size:9px;color:#999;letter-spacing:1px;margin-top:3px">Производитель премиальной косметики</div>'
+    +(metaParts.length?'<div style="margin-top:8px;font-size:11px;color:#777">'+metaParts.join(' · ')+'</div>':'')
+    +'</div>'
+    +'<div class="req"><strong>ООО «АСЕНС»</strong><br>143422, МО, г.о. Красногорск<br>ул. Полевая, стр. 35А<br>ИНН 5024230644<br>+7 (495) 970-86-40</div>'
+    +'</div>'
+    +'<div style="font-size:11px;color:#999;margin-bottom:4px">'+date+'</div>'
+    +'<div style="font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px">Коммерческое предложение</div>'
+    +(note?'<p style="font-size:12.5px;color:#333;line-height:1.65;margin-bottom:14px">'+note+'</p>':'')
+    +'<table><thead><tr><th>Продукт</th><th style="text-align:center">Кол-во</th><th style="text-align:right">Цена / ед.</th><th style="text-align:right">Сумма</th></tr></thead>'
+    +'<tbody>'+rows+'<tr class="tot"><td colspan="3">Итого к оплате</td><td>'+Math.round(total).toLocaleString('ru-RU')+' ₽</td></tr></tbody></table>'
+    +'<div class="foot">'+mgrLine+'<br><strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>'
+    +'АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974</div>'
+    +'<button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>'
+    +'</body></html>';
+}
+
+function printCustomKP(){
+  if(!ckpRows.filter(function(r){return r.name;}).length){ alert('Добавьте хотя бы одну позицию'); return; }
+  var w = window.open('','_blank','width=820,height=900');
+  w.document.write(buildCustomKPHtml());
+  w.document.close();
+}
+
+function exportCustomKPExcel(){
+  if(!ckpRows.filter(function(r){return r.name;}).length){ alert('Добавьте хотя бы одну позицию'); return; }
+  var disc = getDisc ? getDisc() : 0;
+  var client = document.getElementById('ckp-client').value.trim()||'Клиент';
+  var wb = XLSX.utils.book_new();
+  var rows = [['Продукт','Кол-во','Цена / ед., ₽','Сумма, ₽']];
+  var total = 0;
+  ckpRows.filter(function(r){return r.name;}).forEach(function(r){
+    rows.push([r.name, r.qty, r.price, r.qty*r.price]);
+    total += r.qty*r.price;
+  });
+  rows.push(['','','ИТОГО:', total]);
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:40},{wch:10},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'КП');
+  XLSX.writeFile(wb, 'КП_Asense_'+client.replace(/\s/g,'_')+'.xlsx');
+}
+
+
+// ===== RETAIL =====
+const RETAIL_CATS = [
+  {id:'diff', name:'Аромадиффузоры 125мл', items:[
+    {name:'Аромадиффузор Pure Cannabis',           vol:125, prices:[1250,1470,1920], rrc:2500},
+    {name:'Аромадиффузор Oud Wealth',              vol:125, prices:[1250,1470,1920], rrc:2500},
+    {name:'Аромадиффузор Warm Cinnamon Bun',       vol:125, prices:[1250,1470,1920], rrc:2500},
+    {name:'Аромадиффузор Tobacco Leaf & Vanilla',  vol:125, prices:[1250,1470,1920], rrc:2500},
+    {name:'Аромадиффузор White Lotus (SPA)',        vol:125, prices:[1400,1650,2150], rrc:2800},
+    {name:'Аромадиффузор Hamam Lover (SPA)',        vol:125, prices:[1400,1650,2150], rrc:2800},
+    {name:'Аромадиффузор Meditation Session (SPA)', vol:125, prices:[1400,1650,2150], rrc:2800},
+  ]},
+  {id:'refill', name:'Рефилл 1л', items:[
+    {name:'Рефилл Pure Cannabis',            vol:1000, prices:[9950,9950,9950], rrc:12000},
+    {name:'Рефилл Oud Wealth',               vol:1000, prices:[9950,9950,9950], rrc:12000},
+    {name:'Рефилл Warm Cinnamon Bun',        vol:1000, prices:[9950,9950,9950], rrc:12000},
+    {name:'Рефилл Tobacco Leaf & Vanilla',   vol:1000, prices:[9950,9950,9950], rrc:12000},
+    {name:'Рефилл White Lotus (SPA)',         vol:1000, prices:[9950,9950,9950], rrc:12000},
+    {name:'Рефилл Hamam Lover (SPA)',         vol:1000, prices:[9950,9950,9950], rrc:12000},
+    {name:'Рефилл Meditation Session (SPA)', vol:1000, prices:[9950,9950,9950], rrc:12000},
+  ]},
+  {id:'pfm50', name:'Парфюм для дома 50мл', items:[
+    {name:'Парфюм для дома Pure Cannabis 50мл',       vol:50, prices:[800,940,1230],  rrc:1600},
+    {name:'Парфюм для дома Oud Wealth 50мл',           vol:50, prices:[800,940,1230],  rrc:1600},
+    {name:'Парфюм для дома Virgin Lemongrass 50мл',    vol:50, prices:[800,940,1230],  rrc:1600},
+    {name:'Парфюм для дома Tobacco Leaf & Vanilla 50мл',vol:50,prices:[800,940,1230],  rrc:1600},
+    {name:'Парфюм для дома White Lotus (SPA) 50мл',    vol:50, prices:[800,940,1230],  rrc:1600},
+    {name:'Парфюм для дома Hamam Lover (SPA) 50мл',    vol:50, prices:[800,940,1230],  rrc:1600},
+    {name:'Парфюм для дома Meditation Session 50мл',   vol:50, prices:[800,940,1230],  rrc:1600},
+  ]},
+  {id:'pfm250', name:'Парфюм для дома 250мл', items:[
+    {name:'Парфюм для дома Pure Cannabis 250мл',       vol:250,prices:[1250,1470,1920],rrc:2500},
+    {name:'Парфюм для дома Oud Wealth 250мл',           vol:250,prices:[1250,1470,1920],rrc:2500},
+    {name:'Парфюм для дома Virgin Lemongrass 250мл',    vol:250,prices:[1250,1470,1920],rrc:2500},
+    {name:'Парфюм для дома Tobacco Leaf & Vanilla 250мл',vol:250,prices:[1250,1470,1920],rrc:2500},
+  ]},
+  {id:'pfm500', name:'Парфюм для дома 500мл', items:[
+    {name:'Парфюм для дома Pure Cannabis 500мл',       vol:500,prices:[1750,2060,2690],rrc:3500},
+    {name:'Парфюм для дома Oud Wealth 500мл',           vol:500,prices:[1750,2060,2690],rrc:3500},
+    {name:'Парфюм для дома Virgin Lemongrass 500мл',    vol:500,prices:[1750,2060,2690],rrc:3500},
+    {name:'Парфюм для дома Tobacco Leaf & Vanilla 500мл',vol:500,prices:[1750,2060,2690],rrc:3500},
+  ]},
+  {id:'col300', name:'Коллекция 300мл (стекло)', items:[
+    {name:'Лосьон Pure Cannabis 300мл',             vol:300,prices:[990,1240,1620],rrc:2100},
+    {name:'Лосьон Virgin Lemongrass 300мл',          vol:300,prices:[990,1240,1620],rrc:2100},
+    {name:'Лосьон Tobacco Leaf & Vanilla 300мл',     vol:300,prices:[990,1240,1620],rrc:2100},
+    {name:'Лосьон Sea Salt & Wood 300мл',            vol:300,prices:[990,1240,1620],rrc:2100},
+    {name:'Лосьон Vetiver & Rosemary 300мл',         vol:300,prices:[990,1240,1620],rrc:2100},
+    {name:'Гель для душа Pure Cannabis 300мл',       vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Гель для душа Virgin Lemongrass 300мл',   vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Гель для душа Tobacco Leaf & Vanilla 300мл',vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Гель для душа Vetiver & Rosemary 300мл',  vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Гель для душа Sea Salt & Wood 300мл',     vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Жидкое мыло Pure Cannabis 300мл',         vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Жидкое мыло Virgin Lemongrass 300мл',     vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Жидкое мыло Tobacco Leaf & Vanilla 300мл',vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Жидкое мыло Vetiver & Rosemary 300мл',    vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Жидкое мыло Sea Salt & Wood 300мл',       vol:300,prices:[950,1120,1460],rrc:1900},
+    {name:'Мыло-скраб Vetiver & Rosemary 300мл',     vol:300,prices:[990,1180,1540],rrc:2000},
+    {name:'Шампунь Pure Cannabis 300мл',             vol:300,prices:[990,1180,1540],rrc:2000},
+    {name:'Шампунь Virgin Lemongrass 300мл',          vol:300,prices:[990,1180,1540],rrc:2000},
+    {name:'Шампунь Tobacco Leaf & Vanilla 300мл',     vol:300,prices:[990,1180,1540],rrc:2000},
+    {name:'Кондиционер Pure Cannabis 300мл',         vol:300,prices:[990,1180,1540],rrc:2000},
+    {name:'Кондиционер Virgin Lemongrass 300мл',     vol:300,prices:[990,1180,1540],rrc:2000},
+    {name:'Кондиционер Tobacco Leaf & Vanilla 300мл',vol:300,prices:[990,1180,1540],rrc:2000},
+    {name:'Крем-баттер Ginkgo Biloba 200мл',         vol:200,prices:[1000,1180,1540],rrc:2000},
+  ]},
+  {id:'col500', name:'Коллекция 500мл (пластик)', items:[
+    {name:'Лосьон Pure Cannabis 500мл',             vol:500,prices:[1450,1700,2230],rrc:2900},
+    {name:'Лосьон Virgin Lemongrass 500мл',          vol:500,prices:[1450,1700,2230],rrc:2900},
+    {name:'Лосьон Tobacco Leaf & Vanilla 500мл',     vol:500,prices:[1450,1700,2230],rrc:2900},
+    {name:'Лосьон Vetiver & Rosemary 500мл',         vol:500,prices:[1450,1700,2230],rrc:2900},
+    {name:'Лосьон Sea Salt & Wood 500мл',            vol:500,prices:[1450,1700,2230],rrc:2900},
+    {name:'Гель для душа Pure Cannabis 500мл',       vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Гель для душа Virgin Lemongrass 500мл',   vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Гель для душа Tobacco Leaf & Vanilla 500мл',vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Жидкое мыло Pure Cannabis 500мл',         vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Жидкое мыло Virgin Lemongrass 500мл',     vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Жидкое мыло Tobacco Leaf & Vanilla 500мл',vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Жидкое мыло Vetiver & Rosemary 500мл',    vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Жидкое мыло Sea Salt & Wood 500мл',       vol:500,prices:[1350,1590,2080],rrc:2700},
+    {name:'Мыло-скраб Vetiver & Rosemary 500мл',     vol:500,prices:[1500,1770,2300],rrc:3000},
+    {name:'Шампунь Pure Cannabis 500мл',             vol:500,prices:[1500,1770,2300],rrc:3000},
+    {name:'Шампунь Virgin Lemongrass 500мл',          vol:500,prices:[1500,1770,2300],rrc:3000},
+    {name:'Шампунь Tobacco Leaf & Vanilla 500мл',     vol:500,prices:[1500,1770,2300],rrc:3000},
+    {name:'Кондиционер Pure Cannabis 500мл',         vol:500,prices:[1500,1770,2300],rrc:3000},
+    {name:'Кондиционер Virgin Lemongrass 500мл',     vol:500,prices:[1500,1770,2300],rrc:3000},
+    {name:'Кондиционер Tobacco Leaf & Vanilla 500мл',vol:500,prices:[1500,1770,2300],rrc:3000},
+  ]},
+  {id:'sets', name:'Подарочные наборы', items:[
+    {name:'Набор Шамп+Конд Pure Cannabis 300мл×2',      vol:'300×2',prices:[1950,2290,3000],rrc:3900},
+    {name:'Набор Шамп+Конд Virgin Lemongrass 300мл×2',  vol:'300×2',prices:[1950,2290,3000],rrc:3900},
+    {name:'Набор Мыло+Лосьон Pure Cannabis 300мл×2',    vol:'300×2',prices:[1950,2290,3000],rrc:3900},
+    {name:'Набор Мыло+Лосьон Virgin Lemongrass 300мл×2',vol:'300×2',prices:[1950,2290,3000],rrc:3900},
+    {name:'Набор Мыло+Лосьон Sea Salt & Wood 300мл×2',  vol:'300×2',prices:[1950,2290,3000],rrc:3900},
+    {name:'Набор мешочек Лосьон+Гель Pure Cannabis',     vol:'200мл',prices:[750,880,1150], rrc:1500},
+    {name:'Набор мешочек Лосьон+Гель Virgin Lemongrass', vol:'200мл',prices:[750,880,1150], rrc:1500},
+    {name:'Набор мешочек Шамп+Конд Pure Cannabis',       vol:'200мл',prices:[750,880,1150], rrc:1500},
+    {name:'Travel Kit Pure Cannabis',                    vol:'120мл',prices:[750,880,1150], rrc:1500},
+    {name:'Travel Kit Virgin Lemongrass',                vol:'120мл',prices:[750,880,1150], rrc:1500},
+    {name:'Travel Kit Tobacco Leaf & Vanilla',           vol:'120мл',prices:[750,880,1150], rrc:1500},
+  ]},
+  {id:'mini', name:'Миниатюры 30-100мл', items:[
+    {name:'Миниатюра Жидкое мыло 30мл',    vol:30,  prices:[100,175,230],rrc:300},
+    {name:'Миниатюра Лосьон 30мл',         vol:30,  prices:[100,175,230],rrc:300},
+    {name:'Миниатюра Шампунь 30мл',        vol:30,  prices:[100,175,230],rrc:300},
+    {name:'Миниатюра Кондиционер 30мл',    vol:30,  prices:[100,175,230],rrc:300},
+    {name:'Миниатюра Гель для душа 30мл',  vol:30,  prices:[100,175,230],rrc:300},
+    {name:'Мыло-скраб Vetiver 30мл',       vol:30,  prices:[100,175,230],rrc:300},
+    {name:'Лосьон Pure Cannabis 100мл',    vol:100, prices:[350,410,540], rrc:700},
+    {name:'Лосьон Virgin Lemongrass 100мл',vol:100, prices:[350,410,540], rrc:700},
+    {name:'Шампунь Pure Cannabis 100мл',   vol:100, prices:[350,410,540], rrc:700},
+    {name:'Шампунь Virgin Lemongrass 100мл',vol:100,prices:[350,410,540], rrc:700},
+    {name:'Гель для душа Pure Cannabis 100мл',vol:100,prices:[350,410,540],rrc:700},
+    {name:'Кондиционер Pure Cannabis 100мл',vol:100,prices:[350,410,540], rrc:700},
+  ]},
+];
+
+var retQty = {};
+var retActiveCat = 'diff';
+
+function getRetLevel(){ return parseInt(document.getElementById('ret-level').value)||2; }
+
+function renderRetail(){
+  // Render category tabs
+  var tabs = document.getElementById('ret-cat-tabs');
+  if(tabs){
+    tabs.innerHTML = '';
+    RETAIL_CATS.forEach(function(cat){
+      var btn = document.createElement('button');
+      btn.className = 'seg-btn' + (cat.id===retActiveCat?' active':'');
+      btn.textContent = cat.name;
+      btn.style.cssText='font-size:11px;padding:6px 10px';
+      btn.addEventListener('click',function(){retActiveCat=cat.id;renderRetailProducts();renderRetailTabs();});
+      tabs.appendChild(btn);
+    });
+  }
+  renderRetailProducts();
+}
+
+function renderRetailTabs(){
+  var tabs = document.getElementById('ret-cat-tabs');
+  if(!tabs) return;
+  tabs.querySelectorAll('button').forEach(function(btn,i){
+    btn.classList.toggle('active', RETAIL_CATS[i].id===retActiveCat);
+  });
+}
+
+function renderRetailProducts(){
+  var list = document.getElementById('ret-product-list');
+  if(!list) return;
+  var lvl = getRetLevel();
+  var cat = RETAIL_CATS.find(function(c){return c.id===retActiveCat;});
+  if(!cat){list.innerHTML='';return;}
+
+  list.innerHTML='';
+  cat.items.forEach(function(item,i){
+    var price = item.prices[lvl];
+    var qty = retQty[retActiveCat+'_'+i]||0;
+    var row = document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:1fr 70px 90px 80px 36px;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;align-items:center;background:'+(qty>0?'rgba(201,168,76,0.05)':('var('+(i%2===0?'--light':'--surface')+')'))+';margin-bottom:2px';
+
+    var nameEl=document.createElement('div');
+    nameEl.style.cssText='font-size:12px;color:var(--text)';
+    nameEl.textContent=item.name;
+
+    var volEl=document.createElement('div');
+    volEl.style.cssText='font-size:11px;color:var(--muted);text-align:center';
+    volEl.textContent=item.vol+' мл';
+
+    var priceEl=document.createElement('div');
+    priceEl.style.cssText='font-size:12px;font-weight:500;color:var(--gold);text-align:right';
+    priceEl.textContent=price.toLocaleString('ru-RU')+' ₽';
+
+    var qtyEl=document.createElement('input');
+    qtyEl.type='number'; qtyEl.value=qty; qtyEl.min='0';
+    qtyEl.style.cssText='padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:13px;text-align:center;background:var(--surface);color:var(--text);font-family:inherit;width:100%';
+    (function(catId,idx){
+      qtyEl.addEventListener('input',function(){
+        retQty[catId+'_'+idx]=parseInt(this.value)||0;
+        updateRetailTotal();
+        if((retQty[catId+'_'+idx]>0)!==!!row.style.background.includes('gold')){
+          row.style.background=retQty[catId+'_'+idx]>0?'rgba(201,168,76,0.05)':('var(--'+(idx%2===0?'light':'surface')+')');
+        }
+      });
+    })(retActiveCat, i);
+
+    var rrcEl=document.createElement('div');
+    rrcEl.style.cssText='font-size:10px;color:var(--muted);text-align:center';
+    rrcEl.title='РРЦ: '+item.rrc.toLocaleString('ru-RU')+' ₽';
+    rrcEl.textContent='РРЦ '+item.rrc.toLocaleString('ru-RU');
+
+    [nameEl,volEl,priceEl,qtyEl,rrcEl].forEach(function(el){row.appendChild(el);});
+    list.appendChild(row);
+  });
+
+  updateRetailTotal();
+}
+
+function updateRetailTotal(){
+  var lvl = getRetLevel();
+  var total = 0;
+  RETAIL_CATS.forEach(function(cat){
+    cat.items.forEach(function(item,i){
+      var qty = retQty[cat.id+'_'+i]||0;
+      total += qty * item.prices[lvl];
+    });
+  });
+  var el = document.getElementById('ret-total');
+  if(el) el.textContent = Math.round(total).toLocaleString('ru-RU')+' ₽';
+}
+
+function getRetailRows(){
+  var lvl = getRetLevel();
+  var rows = [];
+  RETAIL_CATS.forEach(function(cat){
+    var catRows = [];
+    cat.items.forEach(function(item,i){
+      var qty = retQty[cat.id+'_'+i]||0;
+      if(qty > 0) catRows.push({name:item.name, vol:item.vol, qty:qty, price:item.prices[lvl], rrc:item.rrc});
+    });
+    if(catRows.length) rows.push({cat:cat.name, items:catRows});
+  });
+  return rows;
+}
+
+function printRetailKP(){
+  var rows = getRetailRows();
+  if(!rows.length){alert('Укажите количество хотя бы для одной позиции');return;}
+  var lvl = getRetLevel();
+  var lvlNames = ['от 150 000 ₽ (наценка 100%)','от 100 000 ₽ (наценка 70%)','от 30 000 ₽ (наценка 30%)'];
+  var client = document.getElementById('ret-client').value.trim();
+  var contact = document.getElementById('ret-contact').value.trim();
+  var city = document.getElementById('ret-city').value.trim();
+  var date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  var p = getProfile();
+  var total = 0;
+
+  var tableRows = '';
+  rows.forEach(function(section){
+    tableRows += '<tr style="background:#2E4057"><td colspan="5" style="padding:6px 10px;color:#fff;font-weight:500">'+section.cat+'</td></tr>';
+    section.items.forEach(function(item,i){
+      total += item.qty*item.price;
+      tableRows += '<tr style="background:'+(i%2===0?'#F5F2EC':'#fff')+'">'
+        +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee">'+item.name+'</td>'
+        +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee;text-align:center">'+item.vol+' мл</td>'
+        +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee;text-align:center">'+item.qty+'</td>'
+        +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee;text-align:right">'+item.price.toLocaleString('ru-RU')+' ₽</td>'
+        +'<td style="padding:7px 10px;border-bottom:0.5px solid #eee;text-align:right;font-weight:500">'+(item.qty*item.price).toLocaleString('ru-RU')+' ₽</td>'
+        +'</tr>';
+    });
+  });
+
+  var metaParts=[]; if(client)metaParts.push('<strong>'+client+'</strong>'); if(city)metaParts.push(city); if(contact)metaParts.push(contact);
+  var mgrLine=''; if(p.name) mgrLine='<strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · '+p.tg:'')+'<br>';
+
+  var w=window.open('','_blank','width=860,height=950');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Ритейл — '+( client||'Asense')+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:12.5px;color:#1a1a1a;padding:36px 40px}'
+    +'.hdr{display:flex;justify-content:space-between;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid #ddd}'
+    +'.req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}.req strong{color:#1a1a1a}'
+    +'table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:10px}'
+    +'thead tr{background:#1A1A2E}thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}'
+    +'thead th:not(:first-child):not(:nth-child(2)){text-align:right}'
+    +'.tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}'
+    +'.tot td:last-child{color:#C9A84C;font-size:13px;text-align:right}'
+    +'.foot{margin-top:18px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}'
+    +'.foot strong{color:#1a1a1a}'
+    +'.btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}'
+    +'@media print{.btn{display:none}body{padding:20px}}</style></head><body>'
+    +'<div class="hdr"><div>'
+    +'<div style="font-size:26px;font-weight:300;letter-spacing:4px">As<em style="font-style:italic">é</em>nse</div>'
+    +'<div style="font-size:9px;color:#999;letter-spacing:1px;margin-top:3px">Производитель премиальной косметики</div>'
+    +(metaParts.length?'<div style="margin-top:8px;font-size:11px;color:#777">'+metaParts.join(' · ')+'</div>':'')
+    +'</div><div class="req"><strong>ООО «АСЕНС»</strong><br>143422, МО, г.о. Красногорск<br>ул. Полевая, стр. 35А<br>ИНН 5024230644<br>+7 (495) 970-86-40</div></div>'
+    +'<div style="font-size:11px;color:#999;margin-bottom:4px">'+date+'</div>'
+    +'<div style="font-size:14px;font-weight:500;text-align:center;margin:10px 0 6px">Коммерческое предложение — Ритейл</div>'
+    +'<div style="font-size:11px;color:#777;text-align:center;margin-bottom:14px">Ценовой уровень: '+lvlNames[lvl]+' · РРЦ указана справочно</div>'
+    +'<table><thead><tr><th>Продукт</th><th>Объём</th><th style="text-align:center">Кол-во</th><th style="text-align:right">Цена</th><th style="text-align:right">Сумма</th></tr></thead>'
+    +'<tbody>'+tableRows
+    +'<tr class="tot"><td colspan="4">Итого к оплате</td><td>'+Math.round(total).toLocaleString('ru-RU')+' ₽</td></tr>'
+    +'</tbody></table>'
+    +'<div class="foot">'+mgrLine+'<strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>'
+    +'АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974</div>'
+    +'<button class="btn" onclick="window.print()">Печать / Сохранить PDF</button>'
+    +'</body></html>');
+  w.document.close();
+}
+
+function exportRetailExcel(){
+  var rows = getRetailRows();
+  if(!rows.length){alert('Укажите количество хотя бы для одной позиции');return;}
+  var lvl = getRetLevel();
+  var lvlNames=['от 150 000 ₽','от 100 000 ₽','от 30 000 ₽'];
+  var client = document.getElementById('ret-client').value.trim()||'Клиент';
+  var wb = XLSX.utils.book_new();
+  var data=[['Продукт','Объём','Кол-во','Цена, ₽','Сумма, ₽','РРЦ, ₽']];
+  var total=0;
+  rows.forEach(function(sec){
+    data.push([sec.cat,'','','','','']);
+    sec.items.forEach(function(item){
+      data.push([item.name,item.vol+' мл',item.qty,item.price,item.qty*item.price,item.rrc]);
+      total+=item.qty*item.price;
+    });
+  });
+  data.push(['','','','ИТОГО:',total,'']);
+  var ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:44},{wch:10},{wch:8},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws,'КП Ритейл');
+  XLSX.writeFile(wb,'КП_Ритейл_'+client.replace(/\s/g,'_')+'.xlsx');
+}
+
+const KB_SECTIONS = [["1. Компания Asense — кратко", [["Что мы продаём", "Премиальная уходовая косметика для B2B: шампуни, гели для душа, жидкое мыло, лосьоны, кондиционеры. Аромадиффузоры и ароматы для лобби, ресепшн, зон отдыха. Настенные антивандальные диспенсеры (2м, 1м, встраиваемые). Брендирование / кастомизация упаковки под клиента. Аромамаркетинг «под ключ» для объектов HoReCa."], ["Наши клиенты", "Отели 4–5★, бутик-отели, апарт-отели, глэмпинги. Рестораны, кафе, бары (сегмент премиум и средний+). СПА, фитнес-клубы, wellness-центры. Корпоративные клиенты (подарки, офисные поставки). Ритейл — магазины в премиум-сегменте."], ["Ключевые преимущества", "Собственное производство в России (Москва, Новорижское шоссе). Французские парфюмерные ароматы. Матовое стекло и premium-упаковка. Бесплатные образцы для новых партнёров. Персональные условия — цена зависит от объёма. Быстрая доставка по Москве и России. Партнёры: Mövenpick, Tesera, Hartwell Hotel, Рыба Моя, Grace Bistro, AMAVI, ВкусВилл, SKY Duty Free."], ["Форматы поставки", "Канистры 1 л и 5 л (для диспенсеров). Флаконы 30 / 100 / 300 / 500 мл. Миниатюры 20–50 мл для номеров. Наборы Travel Kit и DUO. Диффузоры 50 / 125 / 250 / 500 мл."]]], ["2. Правила общения — базовые принципы", [["✅ Обязательно", "Уточнять в начале разговора: «Удобно говорить?». Сначала выслушать клиента, потом задавать вопросы. Задача звонка — уложиться в 50–70 секунд для первого касания. Если клиент хочет уйти в мессенджер — спокойно фиксировать и отправлять материалы. Презентацию бренда делать в мессенджере (картинки, эстетика). После каждого звонка — занести в CRM, поставить задачу на следующий шаг."], ["🚫 Запрещено", "Никогда не извиняться за звонок. Не говорить «Что вас заинтересовало в нашей косметике?» — звучит слабо. Не давить и не «бомбить» одинаковыми вопросами подряд. Не растягивать разговор — уважать время клиента. Не создавать сделки и образцы без занесённого лида в CRM."]]], ["3. Скрипт: холодный звонок", [["Открытие — выход на ЛПР", "«Добрый день! Меня зовут [Имя], бренд косметики ASENSE. Мы снабжаем диффузорами и косметикой лучшие отели, рестораны и спа. Хотели бы выйти на связь с вашим ответственным за закупки, чтобы отправить образцы продукции. Подскажите, с кем можно обсудить вопрос снабжения?»"], ["Когда вышли на ЛПР", "«Добрый день, [Имя]! Компания ASENSE — производим косметику и диффузоры для отелей и ресторанов. Коротко о нас: косметика для диспенсеров в канистрах 1 и 5 литров, миниатюры 20 и 50 мл для номеров, аромадиффузоры для лобби и зон отдыха, настенные диспенсеры. Хотим отправить вам бесплатный набор образцов — без обязательств. Попробуете и тогда уже решите. Как вам?»"], ["Закрытие — после согласия", "«Отлично! Записываю: адрес доставки? Имя получателя? Телефон для курьера? Отправим в течение [срок]. Перезвоню [дата] — узнаю впечатления. Вам удобнее утром или после обеда? Спасибо! Хорошего дня!»"]]], ["4. Работа с возражениями", [["«Не дам контакт ЛПР»", "Понимаю, вы оберегаете коллег. Может, передадите информацию сами? Скину на почту короткое письмо с каталогом — буквально на одну страницу. Если будет интересно, человек сам свяжется. Подскажите почту?"], ["«У нас уже есть поставщик»", "Отлично, значит тема вам знакома. Не предлагаю менять — просто попробуйте рядом с тем, что есть. Бесплатно, без обязательств. Если окажется интереснее по качеству или цене — будет повод поговорить. Если нет — ничего не теряете. Отправить образцы?"], ["«Сколько стоит?»", "Мыло — от 5 500 ₽ за 5 литров, лосьоны — от 5 000 ₽ за 5 литров, диффузоры — от 1 500 ₽ за 125 мл. Давайте пришлю полный прайс — там всё видно. Куда удобнее? И сразу: образцы тоже отправить? Чтобы оценили вживую, а не только по прайсу."], ["«Дорого»", "Это стартовые цены, дальше всё зависит от объёма — чем больше заказ, тем лучше условия. Давайте я пришлю прайс, вы посмотрите, и обсудим с цифрами на руках. А начать предлагаю с образцов — попробуете качество, и разговор о цене будет предметнее."], ["«Нам не нужна косметика»", "Подскажите, вы совсем не используете косметику для гостей — ни в номерах, ни в санузлах? Тогда: а ароматизация помещений интересна? Диффузоры для лобби и ресепшн создают атмосферу. Можем отправить один тестовый диффузор бесплатно. Интересно?"], ["«Перезвоните через месяц»", "Хорошо, перезвоню. А пока могу отправить образцы — к моменту звонка вы уже успеете попробовать, разговор будет предметнее. Куда отправить? Перезвоню [дата] — в какое время удобнее, утром или после обеда?"], ["«Пришлите на почту»", "Конечно! Подскажите почту. Отправлю сегодня каталог. И сразу уточню — образцы тоже отправить? Это бесплатно. Перезвоню через 2–3 дня — уточню, дошло ли письмо."]]], ["5. Скрипт: входящий лид", [["Шаг 1 — Быстрый отклик (до 15 мин)", "«Добрый день, [Имя]! Меня зовут [Имя менеджера], бренд ASENSE. Увидел/а ваше обращение — готов/а помочь. Расскажите, что именно вас интересует?»"], ["Шаг 2 — Квалификация", "Какой формат объекта — отель, ресторан, спа, другое? Сколько примерно номеров/мест? Что сейчас используете — есть поставщик? Что принципиально важно: запах, упаковка, цена, объём поставки? Интересна кастомизация / фирменный аромат?"], ["Шаг 3 — Следующий шаг", "«Отлично! Предлагаю отправить вам бесплатный набор образцов — шампунь, гель, мыло, лосьон + один диффузор. Попробуете вживую и тогда обсудим объём и условия. Подскажите адрес доставки?»"]]], ["6. Follow-up после образцов", [["Сообщение +2-3 дня", "«Добрый день, [Имя]! Образцы должны были уже дойти. Успели попробовать? Буду рада услышать первые впечатления — особенно интересно, понравился ли аромат и как ощущается текстура.»"], ["Звонок +7-10 дней", "«Добрый день, [Имя]! Это [Имя] из ASENSE. Отправляли вам образцы на прошлой неделе. Успели ознакомиться? Хотел/а уточнить впечатления и, если интересно — подготовить для вас КП с учётом вашего объёма.»"], ["Вопросы после образцов", "Какой аромат понравился больше всего? Как оцениваете упаковку? Готовы обсуждать объём поставки? Интересует ли кастомизация под ваш бренд?"]]], ["7. Воронка продаж в Битрикс24", [["Стадии воронки", "1. Новый лид — квалификация: тип объекта, объём, ЛПР.\n2. Входящие мессенджеры/звонки — обработать до 15 мин.\n3. Первое касание — каталог, прайс, презентация в мессенджере.\n4. Заявка на отправку образцов — зафиксировать адрес, состав, дату. Уведомить Александра.\n5. Образцы в работе — контроль отправки.\n6. Образцы отправлены — через 2–3 дня запросить обратную связь.\n7. Обратная связь от клиента — выяснить впечатления, зафиксировать предпочтения.\n8. Формирование КП — персональное КП с учётом объёма и сегмента.\n9. Выставлен счёт, дожимаем — согласовать условия, договор, сроки.\n10. Счёт оплачен ✅ — передать на склад Александру. Перевести в аккаунт-менеджмент."]], ["8. Правила работы в CRM", [["Обязательные поля", "Краткая информация о человеке. Должность / роль (закупщик, управляющий, маркетолог). Тип объекта (отель 4-5★, ресторан, спа, глэмпинг...). Что конкретно обсуждали. Откуда лид (холодный прозвон, входящий, выставка, рекомендация)."], ["Правила по образцам", "✅ Сделки и образцы создаются ТОЛЬКО из занесённого лида. ✅ Дубли запрещены — одна сделка = один клиент. ✅ История образцов фиксируется: дата, состав, количество. ✅ Уведомление складу — автоматически при переходе в стадию «Отправка образцов»."], ["Формат названия сделки", "Формат: {Дата} — {Имя клиента} — {Компания / Объект} — {тип лида}\nПример: 2026-05-19 — Иванова Мария — Отель Tesera Spa — холодный прозвон"]]], ["9. Шаблоны сообщений", [["Первое сообщение после звонка", "Добрый день, [Имя]! Это [Имя менеджера] из ASENSE — только что говорили по телефону. Как и обещал/а, отправляю: 📌 Каталог продукции 📌 Прайс-лист 📌 Информацию о бренде. Если удобно — можем договориться об отправке образцов. Это бесплатно и без обязательств. Просто напишите адрес и имя получателя 🙂"], ["После отправки образцов", "Добрый день, [Имя]! Образцы уже в пути — ожидайте [дата/срок]. В наборе: [перечень]. Если появятся вопросы по аромату, составу или условиям — пишите в любое время. Буду рад/а помочь!"], ["Запрос обратной связи +3 дня", "Добрый день, [Имя]! Образцы уже должны быть у вас. Успели попробовать? Буду рада услышать первые впечатления — особенно интересно, как вам аромат и упаковка 😊"]]], ["10. Работа с отказниками", [["Причины и когда возвращаться", "Дорого / нет бюджета → через 3 месяца.\nУстраивает текущий поставщик → через 4-6 мес, новинки, смена условий.\nНе тот сезон → по сезону (лето/осень — пик для отелей).\nНет ответственного → уточнить контакт, вернуться через 2 нед.\nНедозвон / игнор → попробовать другой канал (почта, мессенджер)."]]], ["11. Чеклист после каждого звонка", [["Обязательно после звонка", "☐ Занести в CRM: имя, должность, тип объекта, о чём говорили\n☐ Поставить задачу на следующий шаг с дедлайном\n☐ Если договорились на образцы — создать заявку в тот же день\n☐ Если договорились на почту/мессенджер — отправить до конца рабочего дня\n☐ Если отказ — указать причину и перевести в воронку отказников\n☐ Если перезвон — зафиксировать дату и удобное время"]]], ["12. Контакты и ресурсы", [["Полезные контакты", "Сайт: asense.store\nТелефон: +7 (495) 970-86-40\nПочта: seo@asense.store\nКаталог, прайс, КП — в CRM Битрикс24\nОбразцы — запрос через CRM, исполнение — Александр (склад)\nДизайнер (брендирование) — Инна: innasipacheva@yandex.ru"]]]]];;
+
+function renderKB(){
+  var el = document.getElementById('kb-list');
+  if(!el) return;
+  el.innerHTML = '';
+  KB_SECTIONS.forEach(function(sec, si){
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);margin-bottom:8px';
+
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'padding:12px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--navy);-webkit-tap-highlight-color:transparent';
+    hdr.innerHTML = '<div style="font-size:13px;font-weight:500;color:#fff">'+sec[0]+'</div>'
+      +'<div style="font-size:20px;color:var(--gold);flex-shrink:0;line-height:1;min-width:24px;text-align:center" id="kb-icon-'+si+'">+</div>';
+
+    var body = document.createElement('div');
+    body.id = 'kb-body-'+si;
+    body.style.cssText = 'display:none;padding:12px 14px';
+
+    sec[1].forEach(function(item){
+      var card = document.createElement('div');
+      card.style.cssText = 'margin-top:8px;padding:10px 12px;background:var(--light);border-radius:7px;border-left:3px solid var(--gold)';
+      var title = document.createElement('div');
+      title.style.cssText = 'font-size:12px;font-weight:500;color:var(--gold);margin-bottom:4px';
+      title.textContent = item[0];
+      var text = document.createElement('div');
+      text.style.cssText = 'font-size:12px;color:var(--text);line-height:1.65;white-space:pre-wrap';
+      text.textContent = item[1];
+      card.appendChild(title);
+      card.appendChild(text);
+      body.appendChild(card);
+    });
+
+    hdr.addEventListener('click', function(){
+      var open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      var icon = document.getElementById('kb-icon-'+si);
+      if(icon) icon.textContent = open ? '+' : '−';
+    });
+
+    wrap.appendChild(hdr);
+    wrap.appendChild(body);
+    el.appendChild(wrap);
+  });
+}
+
+
+
+function renderHistory(){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const list  = document.getElementById('history-list');
+  const empty = document.getElementById('history-empty');
+  if(!list) return;
+  const segNames={restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+  if(!saves.length){list.innerHTML='';if(empty)empty.style.display='';return;}
+  if(empty)empty.style.display='none';
+  list.innerHTML = saves.map(function(s){
+    return '<div class="hist-item" onclick="loadSave('+s.id+')">'
+      +'<div>'
+      +'<div class="hist-name">'+s.name+'</div>'
+      +'<div class="hist-meta">'+(segNames[s.segment]||s.segment||'')+(s.date?' · '+s.date:'')+(s.total?' · '+s.total:'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      +'<button class="btn btn-sm" onclick="event.stopPropagation();previewSave('+s.id+')">👁КП</button>'
+      +'<button class="btn btn-sm btn-dark" onclick="event.stopPropagation();loadSave('+s.id+')">📂Открыть</button>'
+      +'<button class="btn btn-sm" style="color:red;border-color:#ffaaaa" onclick="event.stopPropagation();deleteSave('+s.id+')">🗑</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function renderPrices(){
+  const priceRow = (p) => {
+    const base = BASE_PRICES[p.id];
+    const cur  = getPrice(p.id);
+    const changed = cur !== base;
+    return `<div style="display:grid;grid-template-columns:1fr 150px 110px;align-items:center;gap:10px;padding:8px 12px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:8px;background:${changed?'rgba(201,168,76,0.05)':'var(--surface)'};margin-bottom:5px">
+      <div>
+        <div style="font-size:13px">${p.name}</div>
+        <div style="font-size:11px;color:var(--muted)">${p.sub||p.unit||''} &nbsp;·&nbsp; базовая: <b>${fmt(base)}</b></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <input type="number" id="pr-${p.id}" value="${cur}" min="0" step="50"
+          style="width:100%;padding:6px 8px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:6px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit"
+          oninput="livePrice('${p.id}',this.value)">
+        <span style="font-size:11px;color:var(--muted)">₽</span>
+      </div>
+      <div style="font-size:11px;color:${changed?'var(--gold)':'var(--muted)'}">
+        ${changed?'✦ изменена':'базовая'}
+        ${changed?`<br><span style="cursor:pointer;text-decoration:underline;font-size:10px" onclick="resetOne('${p.id}')">сбросить</span>`:''}
+      </div>
+    </div>`;
+  };
+  const set = (id, items) => { const el=document.getElementById(id); if(el) el.innerHTML=items.map(priceRow).join(''); };
+  set('price-list-cosmetic', PRODUCTS.filter(p=>p.type==='cosmetic'));
+  set('price-list-aroma',    PRODUCTS.filter(p=>p.type==='aroma'));
+  set('price-list-mini',     PRODUCTS.filter(p=>p.type==='mini'));
+  set('price-list-b300',     PRODUCTS.filter(p=>p.type==='bottle300'));
+  set('price-list-b500',     PRODUCTS.filter(p=>p.type==='bottle500'));
+  set('price-list-equip',    EQUIP);
+}
+
+function livePrice(id, val){
+  const n = parseInt(val);
+  if(!isNaN(n) && n >= 0){
+    customPrices[id] = n;
+    [...PRODUCTS,...EQUIP].forEach(p=>{ if(p.id===id) p.price=n; });
+    localStorage.setItem('asense_prices', JSON.stringify(customPrices));
+    const el = document.getElementById('pr-'+id);
+    if(el) el.style.borderColor = n !== BASE_PRICES[id] ? 'var(--gold)' : 'var(--border)';
+  }
+}
+
+function savePrices(){
+  [...PRODUCTS,...EQUIP].forEach(p=>{
+    const el = document.getElementById('pr-'+p.id);
+    if(el){ const n=parseInt(el.value); if(!isNaN(n)&&n>=0){ customPrices[p.id]=n; p.price=n; } }
+  });
+  localStorage.setItem('asense_prices', JSON.stringify(customPrices));
+  renderPrices();
+  recalc();
+  const btn = event.target.closest('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓Сохранено!';
+  btn.style.background = 'var(--green-t)';
+  setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';},2000);
+}
+
+function resetOne(id){
+  delete customPrices[id];
+  [...PRODUCTS,...EQUIP].forEach(p=>{ if(p.id===id) p.price=BASE_PRICES[id]; });
+  localStorage.setItem('asense_prices', JSON.stringify(customPrices));
+  renderPrices();
+  recalc();
+}
+
+function resetPrices(){
+  if(!confirm('Сбросить все цены к базовым из прайса?')) return;
+  customPrices = {};
+  localStorage.removeItem('asense_prices');
+  [...PRODUCTS,...EQUIP].forEach(p=>{ p.price=BASE_PRICES[p.id]; });
+  renderPrices();
+  recalc();
+}
 
 // ===== SALES =====
 var salesViewMonth = new Date().getMonth();
@@ -1323,7 +2109,1153 @@ function renderSalesList(){
   }).join('');
 }
 
+function toggleAroma(el, gid, name){
+  const map = {'ag-cos':state.aromasCos,'ag-diff':state.aromasDiff,'ag-spa':state.aromasSpa};
+  const s = map[gid];
+  if(s.has(name)){s.delete(name);el.classList.remove('on')}else{s.add(name);el.classList.add('on')}
+}
 
+function buildKPHtml(forPrint=false){
+  const pvDisc = document.getElementById('pv-discount');
+  const disc = pvDisc && pvDisc.value ? parseInt(pvDisc.value)||0 : getDisc();
+  const name=v('c-name'), contact=v('c-contact'), city=v('c-city'), addr=v('c-address'), phone=v('c-phone'), manager=v('c-manager'), note=v('c-note');
+  const segName={restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг',fitness:'фитнес-клуб'}[state.segment];
+  const date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+
+  const metaParts=[];
+  if(name) metaParts.push(`<strong>${name}</strong>`);
+  if(segName) metaParts.push(segName);
+  const loc=[city,addr].filter(Boolean).join(', ');
+  if(loc) metaParts.push(loc);
+
+  const introParts=[];
+  if(contact) introParts.push(contact+', добрый день!');
+  else introParts.push('Добрый день!');
+  if(note) introParts.push(note);
+  else introParts.push('Направляем коммерческое предложение на продукцию Asense.');
+
+  let rows='', total=0;
+
+  const cosmetics = PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic');
+  const aromas    = PRODUCTS.filter(p=>state.checked[p.id]&&(p.type==='aroma'||p.type==='mini'));
+  const equips    = EQUIP.filter(e=>state.equip[e.id]);
+
+  if(cosmetics.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Косметика — канистры 5 000 мл</td></tr>`;
+    cosmetics.forEach(p=>{
+      const ap=adjPrice(p.price), q=calcCans(p.norm), s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} кан.</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(aromas.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Ароматизация</td></tr>`;
+    aromas.forEach(p=>{
+      const ap=adjPrice(p.price), q=state.qty[p.id]||1, s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} ${p.type==='mini'?'наб.':'шт.'}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(equips.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Оборудование</td></tr>`;
+    equips.forEach(e=>{
+      const ap=adjPrice(e.price), q=state.qty[e.id]||1, s=ap*q;
+      total+=s;
+      rows+=`<tr><td>${e.name}</td><td>${q} ${e.unit}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+
+  const customs = state.customItems.filter(c=>c.name);
+  if(customs.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Дополнительно</td></tr>`;
+    customs.forEach(c=>{
+      const p=c.price||0, q=c.qty||1, s=p*q;
+      total+=s;
+      const isFree = p<=1;
+      rows+=`<tr${isFree?' class="kp-free"':''}><td>${c.name}</td><td>${q} шт.</td><td>${isFree?'—':fmt(p)}</td><td style="${isFree?'color:#2E7D32;font-weight:500':''}">${isFree?'Бесплатно':fmt(s)}</td></tr>`;
+    });
+  }
+
+  rows+=`<tr class="kp-free"><td>Флаконы 300 мл</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Брендирование флаконов (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Помпы для канистр 5 л (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-tot"><td colspan="3">Итого к оплате</td><td>${fmt(total)}</td></tr>`;
+
+  let aromaNote='';
+  const ac=[...state.aromasCos], ad=[...state.aromasDiff,...state.aromasSpa];
+  if(ac.length||ad.length){
+    aromaNote='<div class="kp-aromanote">';
+    if(ac.length) aromaNote+=`<div><strong>Ароматы (косметика):</strong> ${ac.join(' · ')}</div>`;
+    if(ad.length) aromaNote+=`<div><strong>Ароматы (ароматизация):</strong> ${ad.join(' · ')}</div>`;
+    aromaNote+='</div>';
+  }
+
+  const managerLine = manager ? `<div style="margin-top:12px;font-size:11px;color:#999">Менеджер: ${manager}</div>` : '';
+
+  return `<div class="kp-doc" id="kp-printable">
+    <div class="kp-hdr">
+      <div>
+        <div class="kp-brand">As<em>é</em>nse</div>
+        <div class="kp-brand-sub">Производитель премиальной косметики</div>
+        ${metaParts.length ? `<div style="margin-top:8px;font-size:11px;color:#777">${metaParts.join(' · ')}</div>` : ''}
+      </div>
+      <div class="kp-req">
+        <strong>ООО «АСЕНС»</strong><br>
+        143422, МО, г.о. Красногорск<br>
+        ул. Полевая, стр. 35А<br>
+        ИНН 5024230644 ОГРН 1235000029659<br>
+        +7 (495) 970-86-40 · commerce@asense.store
+      </div>
+    </div>
+    <div class="kp-date">${date}</div>
+    <div class="kp-heading">Коммерческое предложение</div>
+    <p class="kp-intro">${introParts.join(' ')}</p>
+    <table class="kp-t">
+      <thead><tr><th>Продукт</th><th>Кол-во</th><th>Цена / ед.</th><th>Сумма</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${aromaNote}
+    ${managerLine}
+    ${footerNote ? `<div style="margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555">${footerNote}</div>` : ''}
+    ${pvConditionVal ? `<div style="margin-top:8px;font-size:11px;color:#555">📌 ${pvConditionVal}</div>` : ''}
+    <div class="kp-foot">
+      ${(function(){var p=getProfile();var mgr='';if(p.name){mgr='<strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · TG: '+p.tg:'')+'<br>';}return mgr;})()}
+      <strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>
+      АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974
+    </div>
+  </div>`;
+}
+
+
+function buildKPHtml(forPrint=false){
+  const pvDisc = document.getElementById('pv-discount');
+  const disc = pvDisc && pvDisc.value ? parseInt(pvDisc.value)||0 : getDisc();
+  const name=v('c-name'), contact=v('c-contact'), city=v('c-city'), addr=v('c-address'), phone=v('c-phone'), manager=v('c-manager'), note=v('c-note');
+  const segName={restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг',fitness:'фитнес-клуб'}[state.segment];
+  const date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+
+  const metaParts=[];
+  if(name) metaParts.push(`<strong>${name}</strong>`);
+  if(segName) metaParts.push(segName);
+  const loc=[city,addr].filter(Boolean).join(', ');
+  if(loc) metaParts.push(loc);
+
+  const introParts=[];
+  if(contact) introParts.push(contact+', добрый день!');
+  else introParts.push('Добрый день!');
+  if(note) introParts.push(note);
+  else introParts.push('Направляем коммерческое предложение на продукцию Asense.');
+
+  let rows='', total=0;
+
+  const cosmetics = PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic');
+  const aromas    = PRODUCTS.filter(p=>state.checked[p.id]&&(p.type==='aroma'||p.type==='mini'));
+  const equips    = EQUIP.filter(e=>state.equip[e.id]);
+
+  if(cosmetics.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Косметика — канистры 5 000 мл</td></tr>`;
+    cosmetics.forEach(p=>{
+      const ap=adjPrice(p.price), q=calcCans(p.norm), s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} кан.</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(aromas.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Ароматизация</td></tr>`;
+    aromas.forEach(p=>{
+      const ap=adjPrice(p.price), q=state.qty[p.id]||1, s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} ${p.type==='mini'?'наб.':'шт.'}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(equips.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Оборудование</td></tr>`;
+    equips.forEach(e=>{
+      const ap=adjPrice(e.price), q=state.qty[e.id]||1, s=ap*q;
+      total+=s;
+      rows+=`<tr><td>${e.name}</td><td>${q} ${e.unit}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+
+  const customs = state.customItems.filter(c=>c.name);
+  if(customs.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Дополнительно</td></tr>`;
+    customs.forEach(c=>{
+      const p=c.price||0, q=c.qty||1, s=p*q;
+      total+=s;
+      const isFree = p<=1;
+      rows+=`<tr${isFree?' class="kp-free"':''}><td>${c.name}</td><td>${q} шт.</td><td>${isFree?'—':fmt(p)}</td><td style="${isFree?'color:#2E7D32;font-weight:500':''}">${isFree?'Бесплатно':fmt(s)}</td></tr>`;
+    });
+  }
+
+  rows+=`<tr class="kp-free"><td>Флаконы 300 мл</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Брендирование флаконов (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Помпы для канистр 5 л (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-tot"><td colspan="3">Итого к оплате</td><td>${fmt(total)}</td></tr>`;
+
+  let aromaNote='';
+  const ac=[...state.aromasCos], ad=[...state.aromasDiff,...state.aromasSpa];
+  if(ac.length||ad.length){
+    aromaNote='<div class="kp-aromanote">';
+    if(ac.length) aromaNote+=`<div><strong>Ароматы (косметика):</strong> ${ac.join(' · ')}</div>`;
+    if(ad.length) aromaNote+=`<div><strong>Ароматы (ароматизация):</strong> ${ad.join(' · ')}</div>`;
+    aromaNote+='</div>';
+  }
+
+  const managerLine = manager ? `<div style="margin-top:12px;font-size:11px;color:#999">Менеджер: ${manager}</div>` : '';
+
+  return `<div class="kp-doc" id="kp-printable">
+    <div class="kp-hdr">
+      <div>
+        <div class="kp-brand">As<em>é</em>nse</div>
+        <div class="kp-brand-sub">Производитель премиальной косметики</div>
+        ${metaParts.length ? `<div style="margin-top:8px;font-size:11px;color:#777">${metaParts.join(' · ')}</div>` : ''}
+      </div>
+      <div class="kp-req">
+        <strong>ООО «АСЕНС»</strong><br>
+        143422, МО, г.о. Красногорск<br>
+        ул. Полевая, стр. 35А<br>
+        ИНН 5024230644 ОГРН 1235000029659<br>
+        +7 (495) 970-86-40 · commerce@asense.store
+      </div>
+    </div>
+    <div class="kp-date">${date}</div>
+    <div class="kp-heading">Коммерческое предложение</div>
+    <p class="kp-intro">${introParts.join(' ')}</p>
+    <table class="kp-t">
+      <thead><tr><th>Продукт</th><th>Кол-во</th><th>Цена / ед.</th><th>Сумма</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${aromaNote}
+    ${managerLine}
+    ${footerNote ? `<div style="margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555">${footerNote}</div>` : ''}
+    ${pvConditionVal ? `<div style="margin-top:8px;font-size:11px;color:#555">📌 ${pvConditionVal}</div>` : ''}
+    <div class="kp-foot">
+      ${(function(){var p=getProfile();var mgr='';if(p.name){mgr='<strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · TG: '+p.tg:'')+'<br>';}return mgr;})()}
+      <strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>
+      АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974
+    </div>
+  </div>`;
+}
+
+function renderPreview(){
+  document.getElementById('preview-wrap').innerHTML = buildKPHtml();
+}
+
+
+function renderPreview(){
+  document.getElementById('preview-wrap').innerHTML = buildKPHtml();
+}
+
+function printKP(){
+  renderPreview();
+  const kp = document.getElementById('kp-printable');
+  if(!kp) return;
+  const w = window.open('','_blank','width=820,height=1000');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Asense</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;padding:0}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
+  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
+  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}
+  .kp-brand em{font-style:italic}
+  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
+  .kp-req strong{color:#1a1a1a}
+  .kp-date{font-size:11px;color:#999}
+  .kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
+  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
+  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  table.kp-t thead tr{background:#1A1A2E}
+  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+  table.kp-t thead th:not(:first-child){text-align:right}
+  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+  .kp-foot strong{color:#1a1a1a}
+  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
+  @media print{.print-btn{display:none}}
+  </style></head><body>
+  ${kp.outerHTML}
+  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
+
+function printKP(){
+  renderPreview();
+  const kp = document.getElementById('kp-printable');
+  if(!kp) return;
+  const w = window.open('','_blank','width=820,height=1000');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Asense</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;padding:0}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
+  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
+  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}
+  .kp-brand em{font-style:italic}
+  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
+  .kp-req strong{color:#1a1a1a}
+  .kp-date{font-size:11px;color:#999}
+  .kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
+  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
+  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  table.kp-t thead tr{background:#1A1A2E}
+  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+  table.kp-t thead th:not(:first-child){text-align:right}
+  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+  .kp-foot strong{color:#1a1a1a}
+  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
+  @media print{.print-btn{display:none}}
+  </style></head><body>
+  ${kp.outerHTML}
+  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
+function fmtXL(n){return Math.round(n).toLocaleString('ru-RU')+' ₽'}
+
+
+function fmtXL(n){return Math.round(n).toLocaleString('ru-RU')+' ₽'}
+
+function xlCell(v, opts){
+  opts = opts||{};
+  const isNum = typeof v === 'number';
+  const isFormula = typeof v === 'string' && v[0]==='=';
+  const c = isFormula ? {t:'n',f:v.slice(1)} : isNum ? {t:'n',v:v} : {t:'s',v:String(v===null||v===undefined?'':v)};
+  c.s = {
+    font:{name:'Arial',sz:opts.sz||10,bold:!!opts.bold,color:{rgb:opts.fg||'000000'}},
+    fill:{fgColor:{rgb:opts.bg||'FFFFFF'},patternType:'solid'},
+    alignment:{horizontal:opts.align||'left',vertical:'center',wrapText:!!opts.wrap},
+    border:{
+      top:{style:'thin',color:{rgb:'DDDDDD'}},bottom:{style:'thin',color:{rgb:'DDDDDD'}},
+      left:{style:'thin',color:{rgb:'DDDDDD'}},right:{style:'thin',color:{rgb:'DDDDDD'}}
+    }
+  };
+  if(opts.numFmt) c.z = opts.numFmt;
+  return c;
+}
+
+
+function buildSheet(rows2d, merges, colWidths, rowHeights){
+  const ws = {};
+  let maxC=0, maxR=0;
+  rows2d.forEach(function(row,ri){
+    if(!row) return;
+    row.forEach(function(cell,ci){
+      if(cell===null||cell===undefined) return;
+      const addr = XLSX.utils.encode_cell({r:ri,c:ci});
+      ws[addr] = (typeof cell==='object'&&cell.t) ? cell : xlCell(cell,{});
+      if(ci>maxC) maxC=ci;
+      if(ri>maxR) maxR=ri;
+    });
+  });
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:maxC}});
+  if(merges) ws['!merges']=merges;
+  if(colWidths) ws['!cols']=colWidths;
+  if(rowHeights) ws['!rows']=rowHeights;
+  return ws;
+}
+
+function exportExcel(){
+  const disc    = getDisc();
+  const guests  = getGuests();
+  const days    = getDays();
+  const cName   = v('c-name')||'Клиент';
+  const cCity   = v('c-city');
+  const date    = new Date().toLocaleDateString('ru-RU');
+
+  const D='1A1A2E',G='C9A84C',NV='2E4057',CR='F5F2EC',WH='FFFFFF',GR='F9F7F4',GB='E8F5E9',GT='2E7D32',YL='FFFDE7';
+
+  function hdr(v,bg,fg,sz,al){return xlCell(v,{bg:bg||D,fg:fg||WH,bold:true,sz:sz||10,align:al||'left'});}
+  function sub(v){return xlCell(v,{bg:D,fg:'AAAAAA',sz:9});}
+  function sec(v){return xlCell(v,{bg:NV,fg:WH,bold:true,sz:10});}
+  function dat(v,bg,al){return xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:al||'left'});}
+  function num(v,bg,formula){return formula?xlCell(formula,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'}):xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'});}
+  function tot(v,gold){return xlCell(v,{bg:D,fg:gold?G:WH,bold:true,sz:gold?12:10,align:gold?'right':'left'});}
+  function free(v){return xlCell(v,{bg:GB,fg:GT,sz:10});}
+  function inp(v){return xlCell(v,{bg:YL,fg:'0000AA',bold:true,sz:11,align:'center'});}
+  function empty(bg){return xlCell('',{bg:bg||WH});}
+
+  const cosm = PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='cosmetic';});
+  const selProds = PRODUCTS.filter(function(p){return state.checked[p.id];});
+  const selEquip = EQUIP.filter(function(e){return state.equip[e.id];});
+
+  // ============================================================
+  // ЛИСТ 1 — КП (продукты + цены + формулы)
+  // ============================================================
+  var r1 = [];
+  var m1 = [];
+  var totalRow;
+
+  const clientMeta = [cName,cCity].filter(Boolean).join('  ·  ');
+  r1.push([hdr('ASENSE — Коммерческое предложение',D,G,14,'center'),null,null,null,null]);
+  r1.push([sub(clientMeta||'ООО «АСЕНС»'),null,null,null,sub(date)]);
+  r1.push([null,null,null,null,null]);
+  r1.push([hdr('Продукт',NV),hdr('Объём',NV,WH,10,'center'),hdr('Кол-во',NV,WH,10,'center'),hdr('Цена / ед., ₽',NV,G,10,'center'),hdr('Сумма, ₽',NV,G,10,'right')]);
+  m1.push({s:{r:0,c:0},e:{r:0,c:4}});
+  m1.push({s:{r:1,c:0},e:{r:1,c:3}});
+
+  var dataStartRow = 4;
+
+  function addSec1(label, items, isEquip){
+    if(!items.length) return;
+    r1.push([sec(label),sec(''),sec(''),sec(''),sec('')]);
+    items.forEach(function(p,i){
+      const ap = Math.round(p.price*(1-disc/100));
+      const q  = isEquip?(state.qty[p.id]||1):(p.norm>0?calcCans(p.norm):(state.qty[p.id]||1));
+      const ri = r1.length;
+      const bg = i%2===0?CR:WH;
+      const aroma = state.productAroma[p.id];
+      const nm = p.name+(aroma?' ('+aroma+')':'');
+      const vol = p.vol||p.sub||'';
+      // C=qty(col3), D=price(col4), E=formula sum
+      r1.push([dat(nm,bg),dat(vol,bg,'center'),inp(q),inp(ap),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
+    });
+  }
+
+  addSec1('Косметика — канистры 5 000 мл', cosm, false);
+  addSec1('Ароматизация', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='aroma';}), false);
+  addSec1('Миниатюры / Наборы', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='mini';}), false);
+  addSec1('Флаконы 300 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle300';}), false);
+  addSec1('Флаконы 500 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle500';}), false);
+  addSec1('Оборудование', selEquip, true);
+
+  const customs = state.customItems.filter(function(c){return c.name;});
+  if(customs.length){
+    r1.push([sec('Дополнительно'),sec(''),sec(''),sec(''),sec('')]);
+    customs.forEach(function(c,i){
+      const ri=r1.length;
+      const bg=i%2===0?CR:WH;
+      if((c.price||0)<=1){
+        r1.push([free(c.name),free(''),free(c.qty||1),free('Бесплатно'),free('Бесплатно')]);
+      } else {
+        r1.push([dat(c.name,bg),dat('',bg,'center'),inp(c.qty||1),inp(c.price||0),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
+      }
+    });
+  }
+
+  r1.push([free('Флаконы 300 мл (первые 4 шт., от 30 000 ₽)'),free('4 шт.'),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Брендирование флаконов (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Помпы для канистр 5 л (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+
+  // Total row with SUM formula
+  const totRowIdx = r1.length+1;
+  const sumFormula = '=SUM(E'+dataStartRow+':E'+(r1.length)+')';
+  r1.push([tot(''),tot(''),tot(''),tot('ИТОГО К ОПЛАТЕ'),tot(sumFormula,true)]);
+  r1.push([null,null,null,null,null]);
+  r1.push([xlCell('🟡 Жёлтые ячейки можно редактировать — кол-во и цены пересчитаются автоматически',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null]);
+  r1.push([xlCell('🚚 Доставка до терминалов СДЭК и ТК КИТ — бесплатно',{bg:GR,fg:'666666',sz:9}),null,null,null,null]);
+  r1.push([xlCell('ASENSE · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru',{bg:GR,fg:'888888',sz:9}),null,null,null,null]);
+
+  const lastRow = r1.length;
+  m1.push({s:{r:lastRow-3,c:0},e:{r:lastRow-3,c:4}});
+  m1.push({s:{r:lastRow-2,c:0},e:{r:lastRow-2,c:4}});
+  m1.push({s:{r:lastRow-1,c:0},e:{r:lastRow-1,c:4}});
+
+  const ws1 = buildSheet(r1, m1, [{wch:40},{wch:12},{wch:10},{wch:14},{wch:14}], [{hpt:28},{hpt:14}]);
+
+  // ============================================================
+  // ЛИСТ 2 — Расчёт расхода (занятость + фитнес)
+  // ============================================================
+  var r2 = [];
+  var m2 = [];
+
+  const scenarios = [{n:'50%',m:0.5},{n:'70%',m:0.7},{n:'100%',m:1.0}];
+
+  r2.push([hdr('ASENSE — Расчёт расхода косметики по зонам',D,G,13),null,null,null,null,null,null,null,null,null]);
+  r2.push([sub([cName,'Гостей/день: '+guests,'Рабочих дней: '+days].filter(Boolean).join('  ·  ')),null,null,null,null,null,null,null,null,null]);
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:0,c:0},e:{r:0,c:9}});
+  m2.push({s:{r:1,c:0},e:{r:1,c:9}});
+
+  // Params block (yellow — editable)
+  r2.push([hdr('Параметры (редактировать)',NV),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:3,c:0},e:{r:3,c:9}});
+
+  r2.push([dat('Гостей в день (номерной фонд)'),null,inp(guests),null,dat('Рабочих дней в месяц'),null,inp(days),null,null,null]);
+  r2.push([dat('Гостей в день (фитнес/спа)'),null,inp(Math.round(guests*0.3)),null,dat('Скидка %'),null,inp(disc),null,null,null]);
+
+  const GR_ROW = 4; // row index of guests (1-based = 5, 0-based = 4)
+  const FIT_ROW = 5;
+  const DAYS_COL = 'G'; // col index
+  const DISC_COL = 'G';
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // --- ЗОНА 1: НОМЕРНОЙ ФОНД ---
+  r2.push([hdr('ЗОНА 1 — Номерной фонд / Стандартные номера',NV,WH,11),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const hdrRow2 = [dat('Продукт',NV.replace('2E4057','F0F4F8')),dat('Норма мл/гость',NV.replace('2E4057','F0F4F8'),'center')];
+  scenarios.forEach(function(s){
+    hdrRow2.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
+    hdrRow2.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
+  });
+  hdrRow2.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
+  r2.push(hdrRow2);
+
+  cosm.forEach(function(p,pi){
+    const ap = Math.round(p.price*(1-disc/100));
+    const bg = pi%2===0?CR:WH;
+    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
+    const ri = r2.length+1;
+    scenarios.forEach(function(sc,si){
+      // Formula: =MAX(1,ROUNDUP(C5*G5*norm/5000,0)) where C5=guests, G5=days
+      const gRef = 'C5'; const dRef = 'G5';
+      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
+      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
+      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
+      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
+    });
+    // В год = sum at 100% * 12
+    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
+    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
+    r2.push(row);
+  });
+
+  // Subtotal hotel
+  const htStart = 9; // approx
+  const htEnd = r2.length;
+  r2.push([
+    tot('ИТОГО номерной фонд'),tot(''),
+    xlCell('=SUM(C'+htStart+':C'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(D'+htStart+':D'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(E'+htStart+':E'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(F'+htStart+':F'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(G'+htStart+':G'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(H'+htStart+':H'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    tot(''),
+    xlCell('=SUM(J'+htStart+':J'+htEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // --- ЗОНА 2: ФИТНЕС / СПА ---
+  r2.push([hdr('ЗОНА 2 — Фитнес / СПА',NV,WH,11),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const hdrRow3 = [dat('Продукт'),dat('Норма мл/гость','','center')];
+  scenarios.forEach(function(s){
+    hdrRow3.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
+    hdrRow3.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
+  });
+  hdrRow3.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
+  r2.push(hdrRow3);
+
+  cosm.forEach(function(p,pi){
+    const ap = Math.round(p.price*(1-disc/100));
+    const bg = pi%2===0?'EDE9FE':WH;
+    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
+    const ri = r2.length+1;
+    scenarios.forEach(function(sc,si){
+      const gRef = 'C6'; // fitness guests row
+      const dRef = 'G5';
+      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
+      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
+      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
+      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
+    });
+    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
+    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
+    r2.push(row);
+  });
+
+  const fitStart = htEnd+4;
+  const fitEnd = r2.length;
+  r2.push([
+    tot('ИТОГО фитнес/спа'),tot(''),
+    xlCell('=SUM(C'+fitStart+':C'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(D'+fitStart+':D'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(E'+fitStart+':E'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(F'+fitStart+':F'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(G'+fitStart+':G'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(H'+fitStart+':H'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    tot(''),
+    xlCell('=SUM(J'+fitStart+':J'+fitEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // Grand total
+  r2.push([
+    tot('ИТОГО ПО ВСЕМ ЗОНАМ'),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),
+    xlCell('=J'+(htEnd+1)+'+J'+(fitEnd+1),{bg:D,fg:G,bold:true,sz:13,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+  r2.push([xlCell('🟡 Измените гостей/день и скидку в строках 5-6 — все расчёты пересчитаются',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const ws2 = buildSheet(r2, m2,
+    [{wch:36},{wch:14},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:14}],
+    [{hpt:24},{hpt:13}]
+  );
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, 'КП');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт расхода');
+  XLSX.writeFile(wb, 'КП_Asense_'+cName.replace(/\s/g,'_')+'.xlsx');
+}
+
+
+
+function exportExcel(){
+  const disc    = getDisc();
+  const guests  = getGuests();
+  const days    = getDays();
+  const cName   = v('c-name')||'Клиент';
+  const cCity   = v('c-city');
+  const date    = new Date().toLocaleDateString('ru-RU');
+
+  const D='1A1A2E',G='C9A84C',NV='2E4057',CR='F5F2EC',WH='FFFFFF',GR='F9F7F4',GB='E8F5E9',GT='2E7D32',YL='FFFDE7';
+
+  function hdr(v,bg,fg,sz,al){return xlCell(v,{bg:bg||D,fg:fg||WH,bold:true,sz:sz||10,align:al||'left'});}
+  function sub(v){return xlCell(v,{bg:D,fg:'AAAAAA',sz:9});}
+  function sec(v){return xlCell(v,{bg:NV,fg:WH,bold:true,sz:10});}
+  function dat(v,bg,al){return xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:al||'left'});}
+  function num(v,bg,formula){return formula?xlCell(formula,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'}):xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'});}
+  function tot(v,gold){return xlCell(v,{bg:D,fg:gold?G:WH,bold:true,sz:gold?12:10,align:gold?'right':'left'});}
+  function free(v){return xlCell(v,{bg:GB,fg:GT,sz:10});}
+  function inp(v){return xlCell(v,{bg:YL,fg:'0000AA',bold:true,sz:11,align:'center'});}
+  function empty(bg){return xlCell('',{bg:bg||WH});}
+
+  const cosm = PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='cosmetic';});
+  const selProds = PRODUCTS.filter(function(p){return state.checked[p.id];});
+  const selEquip = EQUIP.filter(function(e){return state.equip[e.id];});
+
+  // ============================================================
+  // ЛИСТ 1 — КП (продукты + цены + формулы)
+  // ============================================================
+  var r1 = [];
+  var m1 = [];
+  var totalRow;
+
+  const clientMeta = [cName,cCity].filter(Boolean).join('  ·  ');
+  r1.push([hdr('ASENSE — Коммерческое предложение',D,G,14,'center'),null,null,null,null]);
+  r1.push([sub(clientMeta||'ООО «АСЕНС»'),null,null,null,sub(date)]);
+  r1.push([null,null,null,null,null]);
+  r1.push([hdr('Продукт',NV),hdr('Объём',NV,WH,10,'center'),hdr('Кол-во',NV,WH,10,'center'),hdr('Цена / ед., ₽',NV,G,10,'center'),hdr('Сумма, ₽',NV,G,10,'right')]);
+  m1.push({s:{r:0,c:0},e:{r:0,c:4}});
+  m1.push({s:{r:1,c:0},e:{r:1,c:3}});
+
+  var dataStartRow = 4;
+
+  function addSec1(label, items, isEquip){
+    if(!items.length) return;
+    r1.push([sec(label),sec(''),sec(''),sec(''),sec('')]);
+    items.forEach(function(p,i){
+      const ap = Math.round(p.price*(1-disc/100));
+      const q  = isEquip?(state.qty[p.id]||1):(p.norm>0?calcCans(p.norm):(state.qty[p.id]||1));
+      const ri = r1.length;
+      const bg = i%2===0?CR:WH;
+      const aroma = state.productAroma[p.id];
+      const nm = p.name+(aroma?' ('+aroma+')':'');
+      const vol = p.vol||p.sub||'';
+      // C=qty(col3), D=price(col4), E=formula sum
+      r1.push([dat(nm,bg),dat(vol,bg,'center'),inp(q),inp(ap),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
+    });
+  }
+
+  addSec1('Косметика — канистры 5 000 мл', cosm, false);
+  addSec1('Ароматизация', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='aroma';}), false);
+  addSec1('Миниатюры / Наборы', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='mini';}), false);
+  addSec1('Флаконы 300 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle300';}), false);
+  addSec1('Флаконы 500 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle500';}), false);
+  addSec1('Оборудование', selEquip, true);
+
+  const customs = state.customItems.filter(function(c){return c.name;});
+  if(customs.length){
+    r1.push([sec('Дополнительно'),sec(''),sec(''),sec(''),sec('')]);
+    customs.forEach(function(c,i){
+      const ri=r1.length;
+      const bg=i%2===0?CR:WH;
+      if((c.price||0)<=1){
+        r1.push([free(c.name),free(''),free(c.qty||1),free('Бесплатно'),free('Бесплатно')]);
+      } else {
+        r1.push([dat(c.name,bg),dat('',bg,'center'),inp(c.qty||1),inp(c.price||0),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
+      }
+    });
+  }
+
+  r1.push([free('Флаконы 300 мл (первые 4 шт., от 30 000 ₽)'),free('4 шт.'),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Брендирование флаконов (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Помпы для канистр 5 л (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+
+  // Total row with SUM formula
+  const totRowIdx = r1.length+1;
+  const sumFormula = '=SUM(E'+dataStartRow+':E'+(r1.length)+')';
+  r1.push([tot(''),tot(''),tot(''),tot('ИТОГО К ОПЛАТЕ'),tot(sumFormula,true)]);
+  r1.push([null,null,null,null,null]);
+  r1.push([xlCell('🟡 Жёлтые ячейки можно редактировать — кол-во и цены пересчитаются автоматически',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null]);
+  r1.push([xlCell('🚚 Доставка до терминалов СДЭК и ТК КИТ — бесплатно',{bg:GR,fg:'666666',sz:9}),null,null,null,null]);
+  r1.push([xlCell('ASENSE · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru',{bg:GR,fg:'888888',sz:9}),null,null,null,null]);
+
+  const lastRow = r1.length;
+  m1.push({s:{r:lastRow-3,c:0},e:{r:lastRow-3,c:4}});
+  m1.push({s:{r:lastRow-2,c:0},e:{r:lastRow-2,c:4}});
+  m1.push({s:{r:lastRow-1,c:0},e:{r:lastRow-1,c:4}});
+
+  const ws1 = buildSheet(r1, m1, [{wch:40},{wch:12},{wch:10},{wch:14},{wch:14}], [{hpt:28},{hpt:14}]);
+
+  // ============================================================
+  // ЛИСТ 2 — Расчёт расхода (занятость + фитнес)
+  // ============================================================
+  var r2 = [];
+  var m2 = [];
+
+  const scenarios = [{n:'50%',m:0.5},{n:'70%',m:0.7},{n:'100%',m:1.0}];
+
+  r2.push([hdr('ASENSE — Расчёт расхода косметики по зонам',D,G,13),null,null,null,null,null,null,null,null,null]);
+  r2.push([sub([cName,'Гостей/день: '+guests,'Рабочих дней: '+days].filter(Boolean).join('  ·  ')),null,null,null,null,null,null,null,null,null]);
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:0,c:0},e:{r:0,c:9}});
+  m2.push({s:{r:1,c:0},e:{r:1,c:9}});
+
+  // Params block (yellow — editable)
+  r2.push([hdr('Параметры (редактировать)',NV),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:3,c:0},e:{r:3,c:9}});
+
+  r2.push([dat('Гостей в день (номерной фонд)'),null,inp(guests),null,dat('Рабочих дней в месяц'),null,inp(days),null,null,null]);
+  r2.push([dat('Гостей в день (фитнес/спа)'),null,inp(Math.round(guests*0.3)),null,dat('Скидка %'),null,inp(disc),null,null,null]);
+
+  const GR_ROW = 4; // row index of guests (1-based = 5, 0-based = 4)
+  const FIT_ROW = 5;
+  const DAYS_COL = 'G'; // col index
+  const DISC_COL = 'G';
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // --- ЗОНА 1: НОМЕРНОЙ ФОНД ---
+  r2.push([hdr('ЗОНА 1 — Номерной фонд / Стандартные номера',NV,WH,11),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const hdrRow2 = [dat('Продукт',NV.replace('2E4057','F0F4F8')),dat('Норма мл/гость',NV.replace('2E4057','F0F4F8'),'center')];
+  scenarios.forEach(function(s){
+    hdrRow2.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
+    hdrRow2.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
+  });
+  hdrRow2.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
+  r2.push(hdrRow2);
+
+  cosm.forEach(function(p,pi){
+    const ap = Math.round(p.price*(1-disc/100));
+    const bg = pi%2===0?CR:WH;
+    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
+    const ri = r2.length+1;
+    scenarios.forEach(function(sc,si){
+      // Formula: =MAX(1,ROUNDUP(C5*G5*norm/5000,0)) where C5=guests, G5=days
+      const gRef = 'C5'; const dRef = 'G5';
+      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
+      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
+      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
+      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
+    });
+    // В год = sum at 100% * 12
+    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
+    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
+    r2.push(row);
+  });
+
+  // Subtotal hotel
+  const htStart = 9; // approx
+  const htEnd = r2.length;
+  r2.push([
+    tot('ИТОГО номерной фонд'),tot(''),
+    xlCell('=SUM(C'+htStart+':C'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(D'+htStart+':D'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(E'+htStart+':E'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(F'+htStart+':F'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(G'+htStart+':G'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(H'+htStart+':H'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    tot(''),
+    xlCell('=SUM(J'+htStart+':J'+htEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // --- ЗОНА 2: ФИТНЕС / СПА ---
+  r2.push([hdr('ЗОНА 2 — Фитнес / СПА',NV,WH,11),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const hdrRow3 = [dat('Продукт'),dat('Норма мл/гость','','center')];
+  scenarios.forEach(function(s){
+    hdrRow3.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
+    hdrRow3.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
+  });
+  hdrRow3.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
+  r2.push(hdrRow3);
+
+  cosm.forEach(function(p,pi){
+    const ap = Math.round(p.price*(1-disc/100));
+    const bg = pi%2===0?'EDE9FE':WH;
+    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
+    const ri = r2.length+1;
+    scenarios.forEach(function(sc,si){
+      const gRef = 'C6'; // fitness guests row
+      const dRef = 'G5';
+      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
+      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
+      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
+      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
+    });
+    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
+    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
+    r2.push(row);
+  });
+
+  const fitStart = htEnd+4;
+  const fitEnd = r2.length;
+  r2.push([
+    tot('ИТОГО фитнес/спа'),tot(''),
+    xlCell('=SUM(C'+fitStart+':C'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(D'+fitStart+':D'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(E'+fitStart+':E'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(F'+fitStart+':F'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(G'+fitStart+':G'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(H'+fitStart+':H'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    tot(''),
+    xlCell('=SUM(J'+fitStart+':J'+fitEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // Grand total
+  r2.push([
+    tot('ИТОГО ПО ВСЕМ ЗОНАМ'),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),
+    xlCell('=J'+(htEnd+1)+'+J'+(fitEnd+1),{bg:D,fg:G,bold:true,sz:13,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+  r2.push([xlCell('🟡 Измените гостей/день и скидку в строках 5-6 — все расчёты пересчитаются',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const ws2 = buildSheet(r2, m2,
+    [{wch:36},{wch:14},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:14}],
+    [{hpt:24},{hpt:13}]
+  );
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, 'КП');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт расхода');
+  XLSX.writeFile(wb, 'КП_Asense_'+cName.replace(/\s/g,'_')+'.xlsx');
+}
+
+
+function previewSave(id){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const s = saves.find(x=>x.id===id);
+  if(!s) return;
+  const html = s.kpHtml || '<p style="padding:20px;color:#999">Предпросмотр недоступен для старых КП — откройте и пересохраните.</p>';
+  const w = window.open('','_blank','width=820,height=900');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП — ${s.name}</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f1;padding:20px}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
+  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
+  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}.kp-brand em{font-style:italic}
+  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}.kp-req strong{color:#1a1a1a}
+  .kp-date{font-size:11px;color:#999}.kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
+  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
+  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  table.kp-t thead tr{background:#1A1A2E}
+  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+  table.kp-t thead th:not(:first-child){text-align:right}
+  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+  .kp-foot strong{color:#1a1a1a}
+  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
+  @media print{.print-btn{display:none}body{background:#fff;padding:0}}
+  </style></head><body>
+  ${html}
+  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
+
+function previewSave(id){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const s = saves.find(x=>x.id===id);
+  if(!s) return;
+  const html = s.kpHtml || '<p style="padding:20px;color:#999">Предпросмотр недоступен для старых КП — откройте и пересохраните.</p>';
+  const w = window.open('','_blank','width=820,height=900');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП — ${s.name}</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f1;padding:20px}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
+  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
+  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}.kp-brand em{font-style:italic}
+  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}.kp-req strong{color:#1a1a1a}
+  .kp-date{font-size:11px;color:#999}.kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
+  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
+  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  table.kp-t thead tr{background:#1A1A2E}
+  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+  table.kp-t thead th:not(:first-child){text-align:right}
+  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+  .kp-foot strong{color:#1a1a1a}
+  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
+  @media print{.print-btn{display:none}body{background:#fff;padding:0}}
+  </style></head><body>
+  ${html}
+  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
+function exportBackupJSON(){
+  const data = {
+    version: 1,
+    exported: new Date().toISOString(),
+    kp: JSON.parse(localStorage.getItem('asense_kp')||'[]'),
+    prices: JSON.parse(localStorage.getItem('asense_prices')||'{}'),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.json';
+  a.click();
+}
+
+
+function exportBackupJSON(){
+  const data = {
+    version: 1,
+    exported: new Date().toISOString(),
+    kp: JSON.parse(localStorage.getItem('asense_kp')||'[]'),
+    prices: JSON.parse(localStorage.getItem('asense_prices')||'{}'),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.json';
+  a.click();
+}
+
+function exportBackupExcel(){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const prices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: КП
+  const rows1 = [['ID','Название','Сегмент','Дата','Итого','Город','Контакт','Менеджер']];
+  saves.forEach(s=>{
+    rows1.push([s.id, s.name, s.segment, s.date, s.total||'', s.inputs?.city||'', s.inputs?.contact||'', s.inputs?.manager||'']);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(rows1);
+  ws1['!cols']=[{wch:14},{wch:28},{wch:12},{wch:12},{wch:14},{wch:20},{wch:20},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'История КП');
+
+  // Sheet 2: Цены
+  const rows2 = [['ID продукта','Название','Цена базовая ₽','Цена текущая ₽']];
+  [...PRODUCTS,...EQUIP].forEach(p=>{
+    const base = BASE_PRICES[p.id];
+    const cur = prices[p.id] ?? base;
+    if(cur !== base) rows2.push([p.id, p.name, base, cur]);
+  });
+  if(rows2.length===1) rows2.push(['—','Все цены базовые','','']);
+  const ws2 = XLSX.utils.aoa_to_sheet(rows2);
+  ws2['!cols']=[{wch:16},{wch:36},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Изменённые цены');
+
+  XLSX.writeFile(wb, 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.xlsx');
+}
+
+
+function exportBackupExcel(){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const prices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: КП
+  const rows1 = [['ID','Название','Сегмент','Дата','Итого','Город','Контакт','Менеджер']];
+  saves.forEach(s=>{
+    rows1.push([s.id, s.name, s.segment, s.date, s.total||'', s.inputs?.city||'', s.inputs?.contact||'', s.inputs?.manager||'']);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(rows1);
+  ws1['!cols']=[{wch:14},{wch:28},{wch:12},{wch:12},{wch:14},{wch:20},{wch:20},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'История КП');
+
+  // Sheet 2: Цены
+  const rows2 = [['ID продукта','Название','Цена базовая ₽','Цена текущая ₽']];
+  [...PRODUCTS,...EQUIP].forEach(p=>{
+    const base = BASE_PRICES[p.id];
+    const cur = prices[p.id] ?? base;
+    if(cur !== base) rows2.push([p.id, p.name, base, cur]);
+  });
+  if(rows2.length===1) rows2.push(['—','Все цены базовые','','']);
+  const ws2 = XLSX.utils.aoa_to_sheet(rows2);
+  ws2['!cols']=[{wch:16},{wch:36},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Изменённые цены');
+
+  XLSX.writeFile(wb, 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.xlsx');
+}
+
+function importBackup(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(!data.version) throw new Error('Неверный формат файла');
+      const existing = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+      const existingIds = new Set(existing.map(x=>x.id));
+      const newItems = (data.kp||[]).filter(x=>!existingIds.has(x.id));
+      const merged = [...newItems, ...existing].slice(0,50);
+      localStorage.setItem('asense_kp', JSON.stringify(merged));
+      if(data.prices && Object.keys(data.prices).length){
+        const curPrices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
+        localStorage.setItem('asense_prices', JSON.stringify({...data.prices, ...curPrices}));
+        customPrices = JSON.parse(localStorage.getItem('asense_prices'));
+        applyCustomPrices();
+      }
+      renderHistory();
+      const msg = newItems.length ? ('Загружено ' + newItems.length + ' новых КП!') : 'Все КП уже есть в истории.';
+      alert(msg);
+    } catch(err) {
+      alert('Ошибка загрузки: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function doLogout(){localStorage.removeItem('asense_user');localStorage.removeItem('asense_admin');location.reload();}
+function goToSales(){go('sales');}
+function copyKPToTelegram(){
+  var name=document.getElementById('c-name').value.trim()||'';
+  var disc=getDisc(); var total=0;
+  var lines=['🧴 *ASENSE — Коммерческое предложение*'];
+  if(name) lines.push('📍 *'+name+'*');
+  lines.push('');
+  PRODUCTS.filter(function(p){return state.checked[p.id];}).forEach(function(p){
+    var ap=Math.round(p.price*(1-disc/100));
+    var q=p.norm>0?calcCans(p.norm):(state.qty[p.id]||1);
+    var unit=p.norm>0 ? ' кан.' : ' шт.';
+    lines.push('• '+p.name+' — '+q+unit+' × '+ap.toLocaleString('ru-RU')+'₽');
+    total+=ap*q;
+  });
+  lines.push(''); lines.push('💰 *Итого: '+Math.round(total).toLocaleString('ru-RU')+' ₽*');
+  var pr=getProfile(); if(pr.name) lines.push('📞 '+pr.name+(pr.phone?' · '+pr.phone:'')+(pr.tg?' · '+pr.tg:''));
+  lines.push('🌐 asense.store');
+  var text=lines.join('\n');
+  navigator.clipboard.writeText(text).then(function(){alert('✅ Скопировано для Telegram!');}).catch(function(){
+    var ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    alert('✅ Скопировано для Telegram!');
+  });
+}
+function downloadVCard(){
+  var p=getProfile();
+  if(!p.name){alert('Сначала заполните профиль менеджера');go('profile');return;}
+  var vcard='BEGIN:VCARD\nVERSION:3.0\nFN:'+p.name+'\nORG:ASENSE\nTITLE:'+(p.title||'')+'\nTEL:'+(p.phone||'')+'\nEMAIL:'+(p.email||'')+'\nURL:https://asense.store\nEND:VCARD';
+  var blob=new Blob([vcard],{type:'text/vcard'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=(p.name.replace(/\s/g,'_')||'Asense_Manager')+'.vcf'; a.click();
+}
+function addCustomItem(){
+  state.customItems.push({id:Date.now(),name:'',price:0,qty:1});
+  renderCustomItems();
+}
+function renderDashboard(){
+  var el=document.getElementById('dash-content');
+  var salesEl=document.getElementById('dash-sales-block');
+  if(!el) return;
+  var now=new Date();
+  var months=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  var allSales=JSON.parse(localStorage.getItem('asense_sales')||'[]');
+  var thisSales=allSales.filter(function(s){var d=new Date(s.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  var actualSum=thisSales.reduce(function(a,s){return a+s.amount;},0);
+  var salesPlan=(function(){var p=JSON.parse(localStorage.getItem('asense_plans')||'{}');return p[now.getFullYear()+'_'+now.getMonth()]||0;})();
+  var saves=JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  var thisMonth=saves.filter(function(s){var parts=(s.date||'').split('.');if(parts.length<3)return false;var d=new Date(parts[2],parts[1]-1,parts[0]);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  var statusCounts={new:0,sent:0,negotiation:0,paid:0};
+  saves.forEach(function(s){var st=s.status||'new';if(statusCounts[st]!==undefined)statusCounts[st]++;});
+  var overdue=saves.filter(function(s){if(!s.inputs||!s.inputs.nextContact)return false;return new Date(s.inputs.nextContact)<now&&(s.status||'new')!=='paid';});
+  if(salesEl&&(actualSum||salesPlan)){
+    var pct=salesPlan?Math.min(100,Math.round(actualSum/salesPlan*100)):0;
+    var color=pct>=100?'#4CAF50':pct>=70?'#FF9800':'#2196F3';
+    salesEl.innerHTML='<div style="padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:13px;font-weight:500">Продажи — '+months[now.getMonth()]+'</span>'
+      +'<button class="btn btn-sm" onclick="goToSales()">Подробнее →</button></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
+      +'<div><div style="font-size:11px;color:var(--muted)">Сделок</div><div style="font-size:20px;font-weight:500">'+thisSales.length+'</div></div>'
+      +'<div><div style="font-size:11px;color:var(--muted)">Сумма</div><div style="font-size:18px;font-weight:500;color:var(--gold)">'+(actualSum?actualSum.toLocaleString('ru-RU')+' ₽':'—')+'</div></div>'
+      +'<div><div style="font-size:11px;color:var(--muted)">Ср. чек</div><div style="font-size:16px;font-weight:500">'+(thisSales.length?Math.round(actualSum/thisSales.length).toLocaleString('ru-RU')+' ₽':'—')+'</div></div>'
+      +'</div></div>';
+  } else if(salesEl) salesEl.innerHTML='';
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">'
+    +'<div class="tc"><div class="tc-label">КП за '+months[now.getMonth()]+'</div><div class="tc-val">'+thisMonth.length+'</div></div>'
+    +'<div class="tc gold"><div class="tc-label">Всего КП</div><div class="tc-val">'+saves.length+'</div></div>'
+    +'<div class="tc"><div class="tc-label">Оплачено</div><div class="tc-val" style="color:#4CAF50">'+statusCounts.paid+'</div></div>'
+    +'<div class="tc" style="background:'+(overdue.length?'rgba(244,67,54,0.1)':'var(--light)')+'"><div class="tc-label">Просрочено</div><div class="tc-val" style="color:'+(overdue.length?'#f44336':'var(--text)')+'">'+overdue.length+'</div></div>'
+    +'</div>'
+    +(overdue.length?'<div style="padding:12px 14px;background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.3);border-radius:8px">'
+      +'<div style="font-size:13px;font-weight:500;color:#f44336;margin-bottom:8px">⚠ Просроченные контакты</div>'
+      +overdue.map(function(s){return '<div style="font-size:12px;padding:4px 0;display:flex;justify-content:space-between"><span>'+s.name+'</span><span style="color:#f44336">'+(s.inputs.nextContact||'')+'</span></div>';}).join('')+'</div>':'');
+}
+function applyTemplate(seg){
+  var tpl=KP_TEMPLATES[seg]; if(!tpl) return;
+  PRODUCTS.forEach(function(p){state.checked[p.id]=false;});
+  tpl.products.forEach(function(id){state.checked[id]=true;});
+  document.getElementById('p-guests').value=tpl.guests;
+  document.getElementById('p-days').value=tpl.days;
+  document.getElementById('c-note').value=tpl.note;
+  var segMap={restaurant:0,hotel:1,spa:2,glamping:3,fitness:4};
+  state.segment=seg;
+  document.querySelectorAll('.seg-btn').forEach(function(b,i){b.classList.toggle('active',i===segMap[seg]);});
+  document.getElementById('lbl-seats').textContent=SEG_LABELS[seg]||'Посадочных мест';
+  renderProducts(); recalc();
+  alert('✅ Шаблон применён');
+}
 
 
 
@@ -2224,12 +4156,7 @@ loadProfile();
 renderProducts();
 setTimeout(loadFromCloud, 1000);
 checkAuthAndInit();
-// Show username in sidebar
-var _u = localStorage.getItem('asense_user');
-var _sideUser = document.getElementById('sidebar-user');
-if(_sideUser && _u) _sideUser.textContent = '👤 ' + _u;
-
-
-</script>
-</body>
-</html>
+var _u=localStorage.getItem('asense_user');
+var _sideUser=document.getElementById('sidebar-user');
+if(_sideUser&&_u) _sideUser.textContent='👤 '+_u;
+>
