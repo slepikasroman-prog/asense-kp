@@ -1210,7 +1210,7 @@ function buildKPHtml(forPrint=false){
   if(cosmetics.length){
     rows+=`<tr class="kp-sec"><td colspan="4">Косметика — канистры 5 000 мл</td></tr>`;
     cosmetics.forEach(p=>{
-      const ap=adjPrice(p.price), q=calcCans(p.norm), s=ap*q;
+      var sn=getNorm(p.id)||p.norm; const ap=adjPrice(p.price), q=state.qty[p.id]||calcCans(sn), s=ap*q;
       total+=s;
       const aroma = state.productAroma[p.id];
       const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
@@ -1429,7 +1429,7 @@ function exportExcel(){
     r1.push([sec(label),sec(''),sec(''),sec(''),sec('')]);
     items.forEach(function(p,i){
       const ap = Math.round(p.price*(1-disc/100));
-      const q  = isEquip?(state.qty[p.id]||1):(p.norm>0?calcCans(p.norm):(state.qty[p.id]||1));
+      const q  = isEquip?(state.qty[p.id]||1):((getNorm(p.id)||p.norm)>0?(state.qty[p.id]||calcCans(getNorm(p.id)||p.norm)):(state.qty[p.id]||1));
       const ri = r1.length;
       const bg = i%2===0?CR:WH;
       const aroma = state.productAroma[p.id];
