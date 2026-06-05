@@ -766,7 +766,7 @@ async function groqAsk(prompt, systemPrompt){
     });
     const d = await r.json();
     return d.choices?.[0]?.message?.content || '';
-  } catch(e){ return ''; }
+  } catch(e){ console.error('Groq error:', e); return 'ERROR:'+e.message; }
 }
 
 // 1. ЗАПОЛНИТЬ КАРТОЧКУ ИЗ ОПИСАНИЯ
@@ -783,6 +783,8 @@ async function aiParseClient(){
 
   var result = await groqAsk(prompt, sysPrompt);
   console.log('Groq raw response:', result);
+  if(result.startsWith('ERROR:')){ alert('Ошибка подключения к ИИ: ' + result); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
+  if(!result){ alert('ИИ не ответил — проверь интернет'); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
   try {
     // Extract JSON from response — try multiple strategies
     var clean = result.replace(/```json|```/g,'').trim();
