@@ -292,7 +292,6 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   <div class="nav-section">Разделы</div>
   <div class="nav-item active" onclick="go('client')" id="nav-client">🏢 Клиент</div>
   <div class="nav-item" onclick="go('products')" id="nav-products">📦 Продукты</div>
-  <div class="nav-item" onclick="go('aroma')" id="nav-aroma">🌿 Ароматы</div>
   <div class="nav-item" onclick="go('preview')" id="nav-preview">📄 Предпросмотр</div>
   <div class="nav-item" onclick="go('history')" id="nav-history">🕐 История КП</div>
   <div class="nav-item" onclick="go('prices')" id="nav-prices">💰 Прайс</div>
@@ -421,18 +420,6 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 </div>
 
 <!-- AROMA -->
-<div id="sec-aroma" style="display:none">
-  <div class="sec-title">Ароматы косметики</div>
-  <div class="aroma-grid" id="ag-cos"></div>
-  <div class="divider"></div>
-  <div class="sec-title">Ароматы диффузоров</div>
-  <div class="aroma-grid" id="ag-diff"></div>
-  <div class="divider"></div>
-  <div class="sec-title">SPA ароматы</div>
-  <div class="aroma-grid" id="ag-spa"></div>
-</div>
-
-<!-- PREVIEW -->
 <div id="sec-preview" style="display:none">
   <div class="notice no-print">🖨 Нажмите «PDF / Печать» для сохранения. Текст можно отредактировать перед печатью.</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px" class="no-print">
@@ -875,15 +862,15 @@ const PRODUCTS = [
   {id:'gel',     name:'Гель для душа Asense',         sub:'5 000 мл', price:5500, norm:18, type:'cosmetic'},
   {id:'scrub',   name:'Мыло-скраб Vetiver & Rosemary',sub:'5 000 мл', price:7000, norm:10, type:'cosmetic'},
   // Ароматизация
-  {id:'ref1',    name:'Рефилл аромадиффузора',        sub:'1 000 мл', price:9950, norm:0, type:'aroma', vol:'1 000 мл'},
-  {id:'dif125',  name:'Аромадиффузор готовый',        sub:'125 мл',   price:1500, norm:0, type:'aroma', vol:'125 мл'},
-  {id:'machine', name:'Аромамашина профессиональная', sub:'до 100 м²',price:6000, norm:0, type:'aroma', vol:'—'},
+  {id:'ref1',    name:'Рефилл аромадиффузора',        sub:'1 000 мл', price:9950, norm:0, type: vol:'1 000 мл'},
+  {id:'dif125',  name:'Аромадиффузор готовый',        sub:'125 мл',   price:1500, norm:0, type: vol:'125 мл'},
+  {id:'machine', name:'Аромамашина профессиональная', sub:'до 100 м²',price:6000, norm:0, type: vol:'—'},
   // Парфюм для дома
-  {id:'pfm50',   name:'Парфюм для дома',              sub:'50 мл',    price:1000, norm:0, type:'aroma', vol:'50 мл'},
-  {id:'pfm250',  name:'Парфюм для дома',              sub:'250 мл',   price:1250, norm:0, type:'aroma', vol:'250 мл'},
-  {id:'pfm500',  name:'Парфюм для дома',              sub:'500 мл',   price:1750, norm:0, type:'aroma', vol:'500 мл'},
-  {id:'pfm1000', name:'Рефилл парфюма для дома',      sub:'1 000 мл', price:3500, norm:0, type:'aroma', vol:'1 000 мл'},
-  {id:'spray50', name:'Антибактериальный спрей',      sub:'50 мл',    price:1000, norm:0, type:'aroma', vol:'50 мл'},
+  {id:'pfm50',   name:'Парфюм для дома',              sub:'50 мл',    price:1000, norm:0, type: vol:'50 мл'},
+  {id:'pfm250',  name:'Парфюм для дома',              sub:'250 мл',   price:1250, norm:0, type: vol:'250 мл'},
+  {id:'pfm500',  name:'Парфюм для дома',              sub:'500 мл',   price:1750, norm:0, type: vol:'500 мл'},
+  {id:'pfm1000', name:'Рефилл парфюма для дома',      sub:'1 000 мл', price:3500, norm:0, type: vol:'1 000 мл'},
+  {id:'spray50', name:'Антибактериальный спрей',      sub:'50 мл',    price:1000, norm:0, type: vol:'50 мл'},
   // Миниатюры 30мл
   {id:'mini_soap',   name:'Миниатюра Жидкое мыло',           sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
   {id:'mini_lotion', name:'Миниатюра Лосьон для тела и рук',  sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
@@ -937,8 +924,8 @@ const SEG_NORMS = {
   fitness:    {soap:10, lotion:0, gel:18, shampoo:11, cond:0, scrub:0},
 };
 function getNorm(id){ var sn=SEG_NORMS[state.segment]; return (sn && sn[id]!==undefined) ? sn[id] : 0; }
-const SECTIONS = ['client','products','aroma','preview','history','prices','custom','retail','dashboard','sales','faq','kb','profile'];
-const TITLES   = {client:'Клиент',products:'Продукты',aroma:'Ароматы',preview:'Предпросмотр КП',history:'История КП',prices:'Прайс — редактор цен',custom:'✏️ Составить КП вручную',retail:'🛍 Ритейл — прайс и КП',dashboard:'📊 Дашборд продаж',sales:'💼 Мои продажи',faq:'FAQ — Частые вопросы',kb:'📚 База знаний отдела продаж',profile:'👤 Профиль менеджера'};
+const SECTIONS = ['client','products','preview','history','prices','custom','retail','dashboard','sales','faq','kb','profile'];
+const TITLES   = {client:'Клиент',products:'Продукты',preview:'Предпросмотр КП',history:'История КП',prices:'Прайс — редактор цен',custom:'✏️ Составить КП вручную',retail:'🛍 Ритейл — прайс и КП',dashboard:'📊 Дашборд продаж',sales:'💼 Мои продажи',faq:'FAQ — Частые вопросы',kb:'📚 База знаний отдела продаж',profile:'👤 Профиль менеджера'};
 
 let state = {
   segment:'restaurant',
@@ -982,8 +969,7 @@ function go(id){
   var mob=document.getElementById('mob-'+id);
   if(mob) mob.classList.add('active');
   if(id==='preview')  renderPreview();
-  if(id==='aroma')    renderAromas();
-  if(id==='history')  renderHistory();
+    if(id==='history')  renderHistory();
   if(id==='products') renderProducts();
   if(id==='prices')  renderPrices();
   if(id==='faq')     renderFAQ();
@@ -1147,22 +1133,6 @@ function updateTotals(){
 }
 
 function recalc(){ renderProducts(); }
-
-function renderAromas(){
-  const render = (id, arr, set) => {
-    document.getElementById(id).innerHTML = arr.map(a =>
-      `<div class="aroma-chip${set.has(a)?' on':''}" onclick="toggleAroma(this,'${id}','${a}')">${a}</div>`
-    ).join('');
-  };
-  render('ag-cos', AROMAS_COS, state.aromasCos);
-  render('ag-diff',AROMAS_DIFF,state.aromasDiff);
-  render('ag-spa', AROMAS_SPA, state.aromasSpa);
-}
-function toggleAroma(el, gid, name){
-  const map = {'ag-cos':state.aromasCos,'ag-diff':state.aromasDiff,'ag-spa':state.aromasSpa};
-  const s = map[gid];
-  if(s.has(name)){s.delete(name);el.classList.remove('on')}else{s.add(name);el.classList.add('on')}
-}
 
 function buildKPHtml(forPrint=false){
   const pvDisc     = document.getElementById('pv-discount');
