@@ -1132,9 +1132,9 @@ function updateTotals(){
   state.customItems.forEach(item=>{
     if(item.name) sum += (item.price||0)*(item.qty||1);
   });
-  document.getElementById('t-cans').textContent  = cans||'—';
-  document.getElementById('t-month').textContent = sum ? fmt(sum) : '—';
-  document.getElementById('t-year').textContent  = sum ? fmt(sum*12) : '—';
+  var elCans=document.getElementById('total-cans'); if(elCans) elCans.textContent=cans||'—';
+  var elSum=document.getElementById('total-sum');   if(elSum) elSum.textContent=sum?fmt(sum):'—';
+  var elYear=document.getElementById('total-year'); if(elYear) elYear.textContent=sum?fmt(sum*12):'—';
 }
 
 function recalc(){ renderProducts(); }
