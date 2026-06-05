@@ -862,15 +862,15 @@ const PRODUCTS = [
   {id:'gel',     name:'Гель для душа Asense',         sub:'5 000 мл', price:5500, norm:18, type:'cosmetic'},
   {id:'scrub',   name:'Мыло-скраб Vetiver & Rosemary',sub:'5 000 мл', price:7000, norm:10, type:'cosmetic'},
   // Ароматизация
-  {id:'ref1',    name:'Рефилл аромадиффузора',        sub:'1 000 мл', price:9950, norm:0, type: vol:'1 000 мл'},
-  {id:'dif125',  name:'Аромадиффузор готовый',        sub:'125 мл',   price:1500, norm:0, type: vol:'125 мл'},
-  {id:'machine', name:'Аромамашина профессиональная', sub:'до 100 м²',price:6000, norm:0, type: vol:'—'},
+  {id:'ref1',    name:'Рефилл аромадиффузора',        sub:'1 000 мл', price:9950, norm:0, type:'aroma', vol:'1 000 мл'},
+  {id:'dif125',  name:'Аромадиффузор готовый',        sub:'125 мл',   price:1500, norm:0, type:'aroma', vol:'125 мл'},
+  {id:'machine', name:'Аромамашина профессиональная', sub:'до 100 м²',price:6000, norm:0, type:'aroma', vol:'—'},
   // Парфюм для дома
-  {id:'pfm50',   name:'Парфюм для дома',              sub:'50 мл',    price:1000, norm:0, type: vol:'50 мл'},
-  {id:'pfm250',  name:'Парфюм для дома',              sub:'250 мл',   price:1250, norm:0, type: vol:'250 мл'},
-  {id:'pfm500',  name:'Парфюм для дома',              sub:'500 мл',   price:1750, norm:0, type: vol:'500 мл'},
-  {id:'pfm1000', name:'Рефилл парфюма для дома',      sub:'1 000 мл', price:3500, norm:0, type: vol:'1 000 мл'},
-  {id:'spray50', name:'Антибактериальный спрей',      sub:'50 мл',    price:1000, norm:0, type: vol:'50 мл'},
+  {id:'pfm50',   name:'Парфюм для дома',              sub:'50 мл',    price:1000, norm:0, type:'aroma', vol:'50 мл'},
+  {id:'pfm250',  name:'Парфюм для дома',              sub:'250 мл',   price:1250, norm:0, type:'aroma', vol:'250 мл'},
+  {id:'pfm500',  name:'Парфюм для дома',              sub:'500 мл',   price:1750, norm:0, type:'aroma', vol:'500 мл'},
+  {id:'pfm1000', name:'Рефилл парфюма для дома',      sub:'1 000 мл', price:3500, norm:0, type:'aroma', vol:'1 000 мл'},
+  {id:'spray50', name:'Антибактериальный спрей',      sub:'50 мл',    price:1000, norm:0, type:'aroma', vol:'50 мл'},
   // Миниатюры 30мл
   {id:'mini_soap',   name:'Миниатюра Жидкое мыло',           sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
   {id:'mini_lotion', name:'Миниатюра Лосьон для тела и рук',  sub:'30 мл', price:70, norm:0, type:'mini', vol:'30 мл'},
@@ -1929,6 +1929,37 @@ function pickCKPProduct(name, price){
   document.getElementById('ckp-picker').style.display='none';
 }
 
+
+function applyCKPTemplate(seg){
+  var tpl = KP_TEMPLATES[seg];
+  if(!tpl) return;
+  var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+  // Fill client fields from main form if empty
+  var ckpClient = document.getElementById('ckp-client');
+  var ckpContact = document.getElementById('ckp-contact');
+  var ckpCity = document.getElementById('ckp-city');
+  if(ckpClient && !ckpClient.value) ckpClient.value = document.getElementById('c-name').value || '';
+  if(ckpContact && !ckpContact.value) ckpContact.value = document.getElementById('c-contact').value || '';
+  if(ckpCity && !ckpCity.value) ckpCity.value = document.getElementById('c-city').value || '';
+  // Set intro note
+  var noteEl = document.getElementById('ckp-note');
+  if(noteEl) noteEl.value = tpl.note || '';
+  // Clear current rows and add template products
+  ckpRows = [];
+  ckpIdCounter = 0;
+  var disc = getDisc();
+  tpl.products.forEach(function(pid){
+    var p = PRODUCTS.find(function(x){return x.id===pid;});
+    if(!p) return;
+    var sn = SEG_NORMS[seg] && SEG_NORMS[seg][pid] !== undefined ? SEG_NORMS[seg][pid] : p.norm;
+    var guests = parseInt(document.getElementById('p-guests').value) || tpl.guests;
+    var days = parseInt(document.getElementById('p-days').value) || tpl.days;
+    var q = sn > 0 ? Math.max(1, Math.ceil(guests * days * sn / 5000)) : (state.qty[pid] || 1);
+    var price = Math.round(p.price * (1 - disc/100));
+    addCustomKPRow(p.name + (p.sub?' '+p.sub:''), q, price);
+  });
+  renderCKPRows();
+}
 function renderCustomKP(){
   renderCKPRows();
   // Pre-fill client from main form
