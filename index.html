@@ -754,12 +754,15 @@ function renderPrices(){
 }
 
 
-async function groqAsk(prompt, onChunk){
+async function groqAsk(prompt, systemPrompt){
   try {
+    var messages = [];
+    if(systemPrompt) messages.push({role:'system', content:systemPrompt});
+    messages.push({role:'user', content:prompt});
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
       headers:{'Authorization':'Bearer '+GROQ_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({model:GROQ_MODEL, messages:[{role:'user',content:prompt}], max_tokens:600, temperature:0.7})
+      body:JSON.stringify({model:GROQ_MODEL, messages:messages, max_tokens:600, temperature:0.3})
     });
     const d = await r.json();
     return d.choices?.[0]?.message?.content || '';
@@ -775,21 +778,10 @@ async function aiParseClient(){
   btn.textContent = '⏳ Думаю...';
   btn.disabled = true;
 
-  var prompt = `Ты помощник менеджера по продажам B2B косметики ASENSE (Россия).
-Извлеки из описания клиента следующие поля и верни ТОЛЬКО JSON без markdown:
-{
-  "name": "название объекта",
-  "contact": "имя контакта",
-  "city": "город",
-  "phone": "телефон или email",
-  "segment": "restaurant|hotel|spa|glamping|fitness",
-  "guests": число гостей в день,
-  "note": "вводная фраза для КП — деловая, без воды"
-}
-Если поле не упомянуто — пустая строка или 0.
-Описание клиента: "${text}"`;
+  var sysPrompt = 'You are a JSON extractor. You ONLY output valid JSON. No explanations, no markdown, no extra text. Just the JSON object.';
+  var prompt = 'Extract from this client description and return ONLY a JSON object with these fields: name (object name), contact (contact person), city (city), phone (phone/email), segment (one of: restaurant/hotel/spa/glamping/fitness), guests (guests per day as number, 0 if unknown), note (short professional intro phrase in Russian for a commercial proposal). If field not mentioned use empty string or 0. Description: "' + text + '"';
 
-  var result = await groqAsk(prompt);
+  var result = await groqAsk(prompt, sysPrompt);
   try {
     // Extract JSON from response — try multiple strategies
     var clean = result.replace(/```json|```/g,'').trim();
