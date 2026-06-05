@@ -772,17 +772,18 @@ function loadFromCloud(){
 // Stub functions available immediately for inline onclick handlers
 function hideSplash(){
   var s=document.getElementById('splash');
-  if(s&&s.style.display!=='none'){
-    s.style.opacity='0';
-    setTimeout(function(){
-      s.style.display='none';
-      // Show login if not logged in
-      var user=localStorage.getItem('asense_user');
-      if(!user){
-        document.getElementById('login-screen').style.display='flex';
-      }
-    },500);
-  }
+  if(!s) return;
+  s.style.transition='opacity 0.4s ease';
+  s.style.opacity='0';
+  s.style.pointerEvents='none';
+  setTimeout(function(){
+    s.style.display='none';
+    var user=localStorage.getItem('asense_user')||sessionStorage.getItem('asense_user');
+    if(!user){
+      var loginEl=document.getElementById('login-screen');
+      if(loginEl) loginEl.style.display='flex';
+    }
+  },450);
 }
 
 function checkAuthAndInit(){
@@ -813,7 +814,12 @@ function checkAuthAndInit(){
     }
   }
 }
-setTimeout(hideSplash, 2000);
+setTimeout(hideSplash, 1500);
+// Attach click handler directly
+(function(){
+  var sp = document.getElementById('splash');
+  if(sp) sp.onclick = hideSplash;
+})();
 function loadProfile(){
   try{
     var p=JSON.parse(localStorage.getItem('asense_profile')||'{}');
