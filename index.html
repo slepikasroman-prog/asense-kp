@@ -299,54 +299,6 @@ html,body{overflow-x:hidden;width:100%}
  
 .login-box{width:90vw;padding:32px 24px}
  
-/* Мобильная навигация: горизонтальный скролл */
- 
-.mobile-nav > div {
- 
-  display: flex !important;
- 
-  overflow-x: auto !important;
- 
-  -webkit-overflow-scrolling: touch;
- 
-  gap: 2px;
- 
-  padding: 0 6px;
- 
-}
- 
-.mob-btn {
- 
-  flex: 0 0 auto !important;
- 
-  min-width: 48px;
- 
-  max-width: 64px;
- 
-}
- 
-/* Строки Custom KP и Retail: flex-wrap на узких экранах */
- 
-#ckp-rows > div, #ret-product-list > div {
- 
-  display: flex !important;
- 
-  flex-wrap: wrap !important;
- 
-  gap: 6px !important;
- 
-}
- 
-#ckp-rows > div > input:first-child,
- 
-#ret-product-list > div > div:first-child {
- 
-  width: 100%;
- 
-  flex: 1 1 100%;
- 
-}
- 
 }
  
 </style>
@@ -1270,7 +1222,7 @@ let aromaHtml = '';
 if(fixedAroma){
  
 aromaHtml = '
-                                                                                                                                                                                                                                <div style="grid-column:1/-1;width:100%;padding:2px 0 4px 30px;font-size:11px;color:var(--muted)">Аромат: 
+                                                                                                                                                                                                                                <div style="grid-column:1/-1;padding:2px 0 4px 30px;font-size:11px;color:var(--muted)">Аромат: 
                                                                                                                                                                                                                                     <strong style="color:var(--gold)">'+fixedAroma+'</strong>
                                                                                                                                                                                                                                 </div>';
  
@@ -1283,7 +1235,7 @@ aromaList.forEach(function(a){ opts += '
                                                                                                                                                                                                                                 <option value="'+a+'"'+(selAroma===a?' selected':'')+'>'+a+'</option>'; });
  
 aromaHtml = '
-                                                                                                                                                                                                                                <div style="grid-column:1/-1;width:100%;padding:2px 0 6px 30px;display:flex;align-items:center;gap:8px">'
+                                                                                                                                                                                                                                <div style="grid-column:1/-1;padding:2px 0 6px 30px;display:flex;align-items:center;gap:8px">'
  
 +'
                                                                                                                                                                                                                                     <span style="font-size:11px;color:var(--muted)">Аромат:</span>'
@@ -1460,13 +1412,7 @@ if(elYear) elYear.textContent = sum ? fmt(sum*12) : '—';
  
 }
  
-function recalc(){
- 
-  renderProducts();
- 
-  if(document.getElementById('sec-retail').style.display !== 'none') renderRetailProducts();
- 
-}
+function recalc(){ renderProducts(); }
  
 function renderAromas(){
  
@@ -3511,7 +3457,7 @@ list.innerHTML='';
  
 cat.items.forEach(function(item,i){
  
-var price = Math.round(item.prices[lvl] * (1 - getDisc()/100));
+var price = item.prices[lvl];
  
 var qty = retQty[retActiveCat+'_'+i]||0;
  
@@ -3591,7 +3537,7 @@ cat.items.forEach(function(item,i){
  
 var qty = retQty[cat.id+'_'+i]||0;
  
-total += qty * Math.round(item.prices[lvl] * (1 - getDisc()/100));
+total += qty * item.prices[lvl];
  
 });
  
@@ -3617,7 +3563,7 @@ cat.items.forEach(function(item,i){
  
 var qty = retQty[cat.id+'_'+i]||0;
  
-if(qty > 0) catRows.push({name:item.name, vol:item.vol, qty:qty, price:Math.round(item.prices[lvl]*(1-getDisc()/100)), rrc:item.rrc});
+if(qty > 0) catRows.push({name:item.name, vol:item.vol, qty:qty, price:item.prices[lvl], rrc:item.rrc});
  
 });
  
@@ -3696,7 +3642,7 @@ var mgrLine=''; if(p.name) mgrLine='
                                                                                                                                                                                                                                                                                                                 <strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · '+p.tg:'')+'
                                                                                                                                                                                                                                                                                                                 <br>';
  
-var w=window.open('','_blank','width=860,height:950');
+var w=window.open('','_blank','width=860,height=950');
  
 w.document.write('
                                                                                                                                                                                                                                                                                                                     <!DOCTYPE html>
@@ -4009,6 +3955,92 @@ el.appendChild(wrap);
  
 }
  
+// ===== RENDER HISTORY (полная версия с поиском и статусами) =====
+ 
+function renderHistory(query){
+ 
+var allSaves=JSON.parse(localStorage.getItem('asense_kp')||'[]');var saves=query?searchHistory(query):allSaves;
+ 
+var list=document.getElementById('history-list');var empty=document.getElementById('history-empty');if(!list)return;
+ 
+var segNames={restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+ 
+var statusColors={new:'#888',sent:'#2196F3',negotiation:'#FF9800',paid:'#4CAF50'};
+ 
+var statusNames={new:'Новый',sent:'Отправлен',negotiation:'Переговоры',paid:'Оплачен'};
+ 
+if(!saves.length){list.innerHTML='';if(empty)empty.style.display='';return;}
+ 
+if(empty)empty.style.display='none';
+ 
+list.innerHTML='';
+ 
+saves.forEach(function(s){
+ 
+var item=document.createElement('div');item.className='hist-item';item.style.cssText='flex-direction:column;align-items:stretch;gap:8px;cursor:default';
+ 
+var st=s.status||'new';var nc=s.inputs&&s.inputs.nextContact?s.inputs.nextContact:'';var overdue=nc&&new Date(nc)
+                                                                                                                                                                                                                                                                                                                                            <new Date()&&st!=='paid';
+ 
+item.innerHTML='
+                                                                                                                                                                                                                                                                                                                                                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                    <div style="flex:1;min-width:0">
+                                                                                                                                                                                                                                                                                                                                                        <div class="hist-name">'+s.name+'</div>
+                                                                                                                                                                                                                                                                                                                                                        <div class="hist-meta">'+(segNames[s.segment]||'')+(s.date?' · '+s.date:'')+(s.total?' · 
+                                                                                                                                                                                                                                                                                                                                                            <strong>'+s.total+'</strong>':'')+'
+                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                    </div>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                        <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:'+statusColors[st]+'22;color:'+statusColors[st]+';border:1px solid '+statusColors[st]+'44">'+statusNames[st]+'</span>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                        <button class="btn btn-sm" onclick="previewSave('+s.id+')">👁 КП</button>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                        <button class="btn btn-sm btn-dark" onclick="loadSave('+s.id+')">📂</button>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                        <button class="btn btn-sm" style="color:red" onclick="deleteSave('+s.id+')">🗑</button>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                </div>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--border)">'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                    <span style="font-size:11px;color:var(--muted)">Статус:</span>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                    <select style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text);font-family:inherit" onchange="updateSaveStatus('+s.id+',this.value)">'
+ 
++Object.entries(statusNames).map(function(e){return '
+                                                                                                                                                                                                                                                                                                                                                        <option value="'+e[0]+'"'+(st===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('')+'
+                                                                                                                                                                                                                                                                                                                                                    </select>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                    <span style="font-size:11px;color:var(--muted)">Контакт:</span>'
+ 
++'
+                                                                                                                                                                                                                                                                                                                                                    <input type="date" value="'+nc+'" style="padding:3px 8px;border:1px solid '+(overdue?'#f44336':'var(--border)')+';border-radius:6px;font-size:11px;background:var(--surface);color:'+(overdue?'#f44336':'var(--text)')+';font-family:inherit" onchange="updateNextContact('+s.id+',this.value)">'
+ 
++(overdue?'
+                                                                                                                                                                                                                                                                                                                                                        <span style="font-size:10px;color:#f44336">⚠</span>':'')+'
+                                                                                                                                                                                                                                                                                                                                                    </div>';
+ 
+list.appendChild(item);
+ 
+});
+ 
+}
+ 
 function renderPrices(){
  
 const priceRow = (p) => {
@@ -4020,32 +4052,32 @@ const cur  = getPrice(p.id);
 const changed = cur !== base;
  
 return `
-                                                                                                                                                                                                                                                                                                                                            <div style="display:grid;grid-template-columns:1fr 150px 110px;align-items:center;gap:10px;padding:8px 12px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:8px;background:${changed?'rgba(201,168,76,0.05)':'var(--surface)'};margin-bottom:5px">
-                                                                                                                                                                                                                                                                                                                                                <div>
-                                                                                                                                                                                                                                                                                                                                                    <div style="font-size:13px">${p.name}</div>
-                                                                                                                                                                                                                                                                                                                                                    <div style="font-size:11px;color:var(--muted)">${p.sub||p.unit||''} &nbsp;·&nbsp; базовая: 
-                                                                                                                                                                                                                                                                                                                                                        <b>${fmt(base)}</b>
-                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                <div style="display:flex;align-items:center;gap:5px">
-                                                                                                                                                                                                                                                                                                                                                    <input type="number" id="pr-${p.id}" value="${cur}" min="0" step="50"
+                                                                                                                                                                                                                                                                                                                                                    <div style="display:grid;grid-template-columns:1fr 150px 110px;align-items:center;gap:10px;padding:8px 12px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:8px;background:${changed?'rgba(201,168,76,0.05)':'var(--surface)'};margin-bottom:5px">
+                                                                                                                                                                                                                                                                                                                                                        <div>
+                                                                                                                                                                                                                                                                                                                                                            <div style="font-size:13px">${p.name}</div>
+                                                                                                                                                                                                                                                                                                                                                            <div style="font-size:11px;color:var(--muted)">${p.sub||p.unit||''} &nbsp;·&nbsp; базовая: 
+                                                                                                                                                                                                                                                                                                                                                                <b>${fmt(base)}</b>
+                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                        <div style="display:flex;align-items:center;gap:5px">
+                                                                                                                                                                                                                                                                                                                                                            <input type="number" id="pr-${p.id}" value="${cur}" min="0" step="50"
  
 style="width:100%;padding:6px 8px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:6px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit"
  
 oninput="livePrice('${p.id}',this.value)">
-                                                                                                                                                                                                                                                                                                                                                        <span style="font-size:11px;color:var(--muted)">₽</span>
-                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                    <div style="font-size:11px;color:${changed?'var(--gold)':'var(--muted)'}">
+                                                                                                                                                                                                                                                                                                                                                                <span style="font-size:11px;color:var(--muted)">₽</span>
+                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                            <div style="font-size:11px;color:${changed?'var(--gold)':'var(--muted)'}">
  
 ${changed?'✦ изменена':'базовая'}
  
 ${changed?`
-                                                                                                                                                                                                                                                                                                                                                        <br>
-                                                                                                                                                                                                                                                                                                                                                            <span style="cursor:pointer;text-decoration:underline;font-size:10px" onclick="resetOne('${p.id}')">сбросить</span>`:''}
+                                                                                                                                                                                                                                                                                                                                                                <br>
+                                                                                                                                                                                                                                                                                                                                                                    <span style="cursor:pointer;text-decoration:underline;font-size:10px" onclick="resetOne('${p.id}')">сбросить</span>`:''}
  
 
-                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                    </div>`;
+                                                                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                                                                            </div>`;
  
 };
  
@@ -4340,67 +4372,67 @@ var salesPlan=(function(){var p=JSON.parse(localStorage.getItem('asense_plans')|
 var saves=JSON.parse(localStorage.getItem('asense_kp')||'[]');
  
 var thisMonth=saves.filter(function(s){var parts=(s.date||'').split('.');if(parts.length
-                                                                                                                                                                                                                                                                                                                                                    <3)return false;var d=new Date(parts[2],parts[1]-1,parts[0]);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+                                                                                                                                                                                                                                                                                                                                                            <3)return false;var d=new Date(parts[2],parts[1]-1,parts[0]);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
  
 var statusCounts={new:0,sent:0,negotiation:0,paid:0};saves.forEach(function(s){var st=s.status||'new';if(statusCounts[st]!==undefined)statusCounts[st]++;});
  
 var overdue=saves.filter(function(s){if(!s.inputs||!s.inputs.nextContact)return false;return new Date(s.inputs.nextContact)
-                                                                                                                                                                                                                                                                                                                                                        <now&&(s.status||'new')!=='paid';});
+                                                                                                                                                                                                                                                                                                                                                                <now&&(s.status||'new')!=='paid';});
  
 if(salesEl&&(actualSum||salesPlan)){var pct=salesPlan?Math.min(100,Math.round(actualSum/salesPlan*100)):0;var color=pct>=100?'#4CAF50':pct>=70?'#FF9800':'#2196F3';
  
 salesEl.innerHTML='
-                                                                                                                                                                                                                                                                                                                                                            <div style="padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px">
-                                                                                                                                                                                                                                                                                                                                                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                                                                                                                                                                                                                                                                                                                                                                    <span style="font-size:13px;font-weight:500">Продажи — '+months[now.getMonth()]+'</span>
-                                                                                                                                                                                                                                                                                                                                                                    <button class="btn btn-sm" onclick="goToSales()">Подробнее →</button>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-                                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:11px;color:var(--muted)">Сделок</div>
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:20px;font-weight:500">'+thisSales.length+'</div>
-                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:11px;color:var(--muted)">Сумма</div>
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:18px;font-weight:500;color:var(--gold)">'+(actualSum?actualSum.toLocaleString('ru-RU')+' ₽':'—')+'</div>
-                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                    <div>
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:11px;color:var(--muted)">Ср. чек</div>
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:16px;font-weight:500">'+(thisSales.length?Math.round(actualSum/thisSales.length).toLocaleString('ru-RU')+' ₽':'—')+'</div>
-                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                            </div>';
+                                                                                                                                                                                                                                                                                                                                                                    <div style="padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px">
+                                                                                                                                                                                                                                                                                                                                                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                                                                                                                                                                                                                                                                                                                                                                            <span style="font-size:13px;font-weight:500">Продажи — '+months[now.getMonth()]+'</span>
+                                                                                                                                                                                                                                                                                                                                                                            <button class="btn btn-sm" onclick="goToSales()">Подробнее →</button>
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:11px;color:var(--muted)">Сделок</div>
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:20px;font-weight:500">'+thisSales.length+'</div>
+                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:11px;color:var(--muted)">Сумма</div>
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:18px;font-weight:500;color:var(--gold)">'+(actualSum?actualSum.toLocaleString('ru-RU')+' ₽':'—')+'</div>
+                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                            <div>
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:11px;color:var(--muted)">Ср. чек</div>
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:16px;font-weight:500">'+(thisSales.length?Math.round(actualSum/thisSales.length).toLocaleString('ru-RU')+' ₽':'—')+'</div>
+                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                    </div>';
  
 }else if(salesEl)salesEl.innerHTML='';
  
 el.innerHTML='
-                                                                                                                                                                                                                                                                                                                                                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-                                                                                                                                                                                                                                                                                                                                                                <div class="tc">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-label">КП за '+months[now.getMonth()]+'</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-val">'+thisMonth.length+'</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                <div class="tc gold">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-label">Всего КП</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-val">'+saves.length+'</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                <div class="tc">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-label">Оплачено</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-val" style="color:#4CAF50">'+statusCounts.paid+'</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                <div class="tc" style="background:'+(overdue.length?'rgba(244,67,54,0.1)':'var(--light)')+'">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-label">Просрочено</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-val" style="color:'+(overdue.length?'#f44336':'var(--text)')+'">'+overdue.length+'</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                            </div>'
+                                                                                                                                                                                                                                                                                                                                                                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+                                                                                                                                                                                                                                                                                                                                                                        <div class="tc">
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-label">КП за '+months[now.getMonth()]+'</div>
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-val">'+thisMonth.length+'</div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                        <div class="tc gold">
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-label">Всего КП</div>
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-val">'+saves.length+'</div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                        <div class="tc">
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-label">Оплачено</div>
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-val" style="color:#4CAF50">'+statusCounts.paid+'</div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                        <div class="tc" style="background:'+(overdue.length?'rgba(244,67,54,0.1)':'var(--light)')+'">
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-label">Просрочено</div>
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-val" style="color:'+(overdue.length?'#f44336':'var(--text)')+'">'+overdue.length+'</div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                    </div>'
  
 +(overdue.length?'
-                                                                                                                                                                                                                                                                                                                                                            <div style="padding:12px 14px;background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.3);border-radius:8px">
-                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:13px;font-weight:500;color:#f44336;margin-bottom:8px">⚠ Просроченные контакты</div>'+overdue.map(function(s){return '
-                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:12px;padding:4px 0;display:flex;justify-content:space-between">
-                                                                                                                                                                                                                                                                                                                                                                    <span>'+s.name+'</span>
-                                                                                                                                                                                                                                                                                                                                                                    <span style="color:#f44336">'+(s.inputs.nextContact||'')+'</span>
-                                                                                                                                                                                                                                                                                                                                                                </div>';}).join('')+'
-                                                                                                                                                                                                                                                                                                                                                            </div>':'');
+                                                                                                                                                                                                                                                                                                                                                                    <div style="padding:12px 14px;background:rgba(244,67,54,0.08);border:1px solid rgba(244,67,54,0.3);border-radius:8px">
+                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:13px;font-weight:500;color:#f44336;margin-bottom:8px">⚠ Просроченные контакты</div>'+overdue.map(function(s){return '
+                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:12px;padding:4px 0;display:flex;justify-content:space-between">
+                                                                                                                                                                                                                                                                                                                                                                            <span>'+s.name+'</span>
+                                                                                                                                                                                                                                                                                                                                                                            <span style="color:#f44336">'+(s.inputs.nextContact||'')+'</span>
+                                                                                                                                                                                                                                                                                                                                                                        </div>';}).join('')+'
+                                                                                                                                                                                                                                                                                                                                                                    </div>':'');
  
 }
  
@@ -4415,7 +4447,7 @@ function getSalesPlan(){var p=JSON.parse(localStorage.getItem('asense_plans')||'
 function saveSalesPlan(){var p=JSON.parse(localStorage.getItem('asense_plans')||'{}');var v=parseInt(document.getElementById('sales-plan-input').value)||0;p[salesViewYear+'_'+salesViewMonth]=v;localStorage.setItem('asense_plans',JSON.stringify(p));renderSalesStats();}
  
 function shiftSalesMonth(dir){salesViewMonth+=dir;if(salesViewMonth>11){salesViewMonth=0;salesViewYear++;}if(salesViewMonth
-                                                                                                                                                                                                                                                                                                                                                            <0){salesViewMonth=11;salesViewYear--;}renderSales();}
+                                                                                                                                                                                                                                                                                                                                                                    <0){salesViewMonth=11;salesViewYear--;}renderSales();}
  
 function setSalesMonthToday(){salesViewMonth=new Date().getMonth();salesViewYear=new Date().getFullYear();renderSales();}
  
@@ -4462,32 +4494,32 @@ var total=sales.reduce(function(a,s){return a+s.amount;},0),plan=getSalesPlan(),
 var color=pct>=100?'#4CAF50':pct>=70?'#FF9800':'#2196F3';
  
 el.innerHTML='
-                                                                                                                                                                                                                                                                                                                                                                <div class="tc">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-label">Сделок</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-val">'+sales.length+'</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>'
+                                                                                                                                                                                                                                                                                                                                                                        <div class="tc">
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-label">Сделок</div>
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-val">'+sales.length+'</div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>'
  
 +'
-                                                                                                                                                                                                                                                                                                                                                                <div class="tc gold">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-label">Сумма</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-val" style="font-size:16px">'+(total?total.toLocaleString('ru-RU')+' ₽':'—')+'</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>'
+                                                                                                                                                                                                                                                                                                                                                                        <div class="tc gold">
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-label">Сумма</div>
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-val" style="font-size:16px">'+(total?total.toLocaleString('ru-RU')+' ₽':'—')+'</div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>'
  
 +'
-                                                                                                                                                                                                                                                                                                                                                                <div class="tc">
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-label">Средний чек</div>
-                                                                                                                                                                                                                                                                                                                                                                    <div class="tc-val" style="font-size:16px">'+(avg?avg.toLocaleString('ru-RU')+' ₽':'—')+'</div>
-                                                                                                                                                                                                                                                                                                                                                                </div>';
+                                                                                                                                                                                                                                                                                                                                                                        <div class="tc">
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-label">Средний чек</div>
+                                                                                                                                                                                                                                                                                                                                                                            <div class="tc-val" style="font-size:16px">'+(avg?avg.toLocaleString('ru-RU')+' ₽':'—')+'</div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>';
  
 var prog=document.getElementById('sales-plan-progress');
  
 if(prog&&plan){prog.innerHTML='
-                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:11px;color:var(--muted);margin-bottom:4px">План: 
-                                                                                                                                                                                                                                                                                                                                                                    <strong style="color:'+color+'">'+pct+'%</strong>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-                                                                                                                                                                                                                                                                                                                                                                    <div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px"></div>
-                                                                                                                                                                                                                                                                                                                                                                </div>';}else if(prog)prog.innerHTML='';
+                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">План: 
+                                                                                                                                                                                                                                                                                                                                                                            <strong style="color:'+color+'">'+pct+'%</strong>
+                                                                                                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                                                                                                        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                                                                                                                                                                                                                                                                                                                                                                            <div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px"></div>
+                                                                                                                                                                                                                                                                                                                                                                        </div>';}else if(prog)prog.innerHTML='';
  
 }
  
@@ -4500,31 +4532,31 @@ var sales=getSales().filter(function(s){var d=new Date(s.date);return d.getMonth
 var segEmoji={restaurant:'🍽',hotel:'🏨',spa:'💧',glamping:'⛺',fitness:'🏋',retail:'🛍',other:'📦'};
  
 if(!sales.length){el.innerHTML='
-                                                                                                                                                                                                                                                                                                                                                                <div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">Нет продаж в этом месяце</div>';return;}
+                                                                                                                                                                                                                                                                                                                                                                        <div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">Нет продаж в этом месяце</div>';return;}
  
 el.innerHTML=sales.map(function(s){var d=new Date(s.date);var ds=d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
  
 return '
-                                                                                                                                                                                                                                                                                                                                                                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap">'
+                                                                                                                                                                                                                                                                                                                                                                        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap">'
  
 +'
-                                                                                                                                                                                                                                                                                                                                                                    <div style="font-size:18px;flex-shrink:0">'+(segEmoji[s.segment]||'📦')+'</div>'
+                                                                                                                                                                                                                                                                                                                                                                            <div style="font-size:18px;flex-shrink:0">'+(segEmoji[s.segment]||'📦')+'</div>'
  
 +'
-                                                                                                                                                                                                                                                                                                                                                                    <div style="flex:1;min-width:120px">
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:13px;font-weight:500">'+s.client+'</div>'+(s.comment?'
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:11px;color:var(--muted)">'+s.comment+'</div>':'')+'
-                                                                                                                                                                                                                                                                                                                                                                    </div>'
+                                                                                                                                                                                                                                                                                                                                                                            <div style="flex:1;min-width:120px">
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:13px;font-weight:500">'+s.client+'</div>'+(s.comment?'
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:11px;color:var(--muted)">'+s.comment+'</div>':'')+'
+                                                                                                                                                                                                                                                                                                                                                                            </div>'
  
 +'
-                                                                                                                                                                                                                                                                                                                                                                    <div style="text-align:right">
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:14px;font-weight:500;color:var(--gold)">'+s.amount.toLocaleString('ru-RU')+' ₽</div>
-                                                                                                                                                                                                                                                                                                                                                                        <div style="font-size:11px;color:var(--muted)">'+ds+'</div>
-                                                                                                                                                                                                                                                                                                                                                                    </div>'
+                                                                                                                                                                                                                                                                                                                                                                            <div style="text-align:right">
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:14px;font-weight:500;color:var(--gold)">'+s.amount.toLocaleString('ru-RU')+' ₽</div>
+                                                                                                                                                                                                                                                                                                                                                                                <div style="font-size:11px;color:var(--muted)">'+ds+'</div>
+                                                                                                                                                                                                                                                                                                                                                                            </div>'
  
 +'
-                                                                                                                                                                                                                                                                                                                                                                    <button onclick="deleteSale('+s.id+')" style="background:none;border:none;color:#e44;cursor:pointer;font-size:18px;padding:0">×</button>
-                                                                                                                                                                                                                                                                                                                                                                </div>';
+                                                                                                                                                                                                                                                                                                                                                                            <button onclick="deleteSale('+s.id+')" style="background:none;border:none;color:#e44;cursor:pointer;font-size:18px;padding:0">×</button>
+                                                                                                                                                                                                                                                                                                                                                                        </div>';
  
 }).join('');
  
@@ -4575,92 +4607,6 @@ var p=getProfile();if(!p.name){alert('Сначала заполните проф
 var v='BEGIN:VCARD\nVERSION:3.0\nFN:'+p.name+'\nORG:ASENSE\nTITLE:'+(p.title||'')+'\nTEL:'+(p.phone||'')+'\nEMAIL:'+(p.email||'')+'\nURL:https://asense.store\nEND:VCARD';
  
 var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([v],{type:'text/vcard'}));a.download=(p.name.replace(/\s/g,'_'))+'.vcf';a.click();
- 
-}
- 
-// ===== RENDER HISTORY (полная версия с поиском и статусами) =====
- 
-function renderHistory(query){
- 
-var allSaves=JSON.parse(localStorage.getItem('asense_kp')||'[]');var saves=query?searchHistory(query):allSaves;
- 
-var list=document.getElementById('history-list');var empty=document.getElementById('history-empty');if(!list)return;
- 
-var segNames={restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
- 
-var statusColors={new:'#888',sent:'#2196F3',negotiation:'#FF9800',paid:'#4CAF50'};
- 
-var statusNames={new:'Новый',sent:'Отправлен',negotiation:'Переговоры',paid:'Оплачен'};
- 
-if(!saves.length){list.innerHTML='';if(empty)empty.style.display='';return;}
- 
-if(empty)empty.style.display='none';
- 
-list.innerHTML='';
- 
-saves.forEach(function(s){
- 
-var item=document.createElement('div');item.className='hist-item';item.style.cssText='flex-direction:column;align-items:stretch;gap:8px;cursor:default';
- 
-var st=s.status||'new';var nc=s.inputs&&s.inputs.nextContact?s.inputs.nextContact:'';var overdue=nc&&new Date(nc)
-                                                                                                                                                                                                                                                                                                                                                                <new Date()&&st!=='paid';
- 
-item.innerHTML='
-                                                                                                                                                                                                                                                                                                                                                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                        <div style="flex:1;min-width:0">
-                                                                                                                                                                                                                                                                                                                                                                            <div class="hist-name">'+s.name+'</div>
-                                                                                                                                                                                                                                                                                                                                                                            <div class="hist-meta">'+(segNames[s.segment]||'')+(s.date?' · '+s.date:'')+(s.total?' · 
-                                                                                                                                                                                                                                                                                                                                                                                <strong>'+s.total+'</strong>':'')+'
-                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                        </div>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                            <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:'+statusColors[st]+'22;color:'+statusColors[st]+';border:1px solid '+statusColors[st]+'44">'+statusNames[st]+'</span>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                            <button class="btn btn-sm" onclick="previewSave('+s.id+')">👁 КП</button>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                            <button class="btn btn-sm btn-dark" onclick="loadSave('+s.id+')">📂</button>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                            <button class="btn btn-sm" style="color:red" onclick="deleteSave('+s.id+')">🗑</button>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                                                                                                                                    </div>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--border)">'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                        <span style="font-size:11px;color:var(--muted)">Статус:</span>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                        <select style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text);font-family:inherit" onchange="updateSaveStatus('+s.id+',this.value)">'
- 
-+Object.entries(statusNames).map(function(e){return '
-                                                                                                                                                                                                                                                                                                                                                                            <option value="'+e[0]+'"'+(st===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('')+'
-                                                                                                                                                                                                                                                                                                                                                                        </select>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                        <span style="font-size:11px;color:var(--muted)">Контакт:</span>'
- 
-+'
-                                                                                                                                                                                                                                                                                                                                                                        <input type="date" value="'+nc+'" style="padding:3px 8px;border:1px solid '+(overdue?'#f44336':'var(--border)')+';border-radius:6px;font-size:11px;background:var(--surface);color:'+(overdue?'#f44336':'var(--text)')+';font-family:inherit" onchange="updateNextContact('+s.id+',this.value)">'
- 
-+(overdue?'
-                                                                                                                                                                                                                                                                                                                                                                            <span style="font-size:10px;color:#f44336">⚠</span>':'')+'
-                                                                                                                                                                                                                                                                                                                                                                        </div>';
- 
-list.appendChild(item);
- 
-});
  
 }
  
