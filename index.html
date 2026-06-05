@@ -1150,62 +1150,6 @@ function saveToHistory(){
   if(document.getElementById('sec-history')&&document.getElementById('sec-history').style.display!=='none') renderHistory();
   syncKPToCloud(entry);
 }
-
-function loadSave(id){
-  var saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
-  var s = saves.find(function(x){return x.id===id;});
-  if(!s||!s.state) return;
-  Object.assign(state, s.state);
-  if(s.state.aromasCos) state.aromasCos = [...s.state.aromasCos];
-  if(s.state.aromasDiff) state.aromasDiff = [...s.state.aromasDiff];
-  if(s.state.aromasSpa) state.aromasSpa = [...s.state.aromasSpa];
-  if(s.state.customItems) state.customItems = [...s.state.customItems];
-  if(s.inputs){
-    var map = {name:'c-name',contact:'c-contact',city:'c-city',addr:'c-address',phone:'c-phone',manager:'c-manager',note:'c-note'};
-    Object.entries(map).forEach(function(e){ var el=document.getElementById(e[1]); if(el&&s.inputs[e[0]]!==undefined) el.value=s.inputs[e[0]]||''; });
-    if(s.inputs.guests) document.getElementById('p-guests').value=s.inputs.guests;
-    if(s.inputs.days) document.getElementById('p-days').value=s.inputs.days;
-    if(s.inputs.disc) document.getElementById('p-disc').value=s.inputs.disc;
-  }
-  if(s.segment){ state.segment=s.segment; var segMap={restaurant:0,hotel:1,spa:2,glamping:3,fitness:4}; var btns=document.querySelectorAll('.seg-btn'); btns.forEach(function(b,i){ b.classList.toggle('active',i===segMap[s.segment]); }); document.getElementById('lbl-seats').textContent=SEG_LABELS[s.segment]||'Посадочных мест'; }
-  renderProducts(); recalc(); go('client');
-}
-
-// Stub functions available immediately for inline onclick handlers
-function hideSplash(){
-  var s=document.getElementById('splash');
-  if(s&&s.style.display!=='none'){
-    s.style.opacity='0';
-    setTimeout(function(){s.style.display='none';},500);
-  }
-}
-
-// Always auto-hide splash after 1.8s - runs immediately when script loads
-(function(){
-  setTimeout(function(){
-    hideSplash();
-    // Also check auth after splash
-    if(typeof checkAuthAndInit === 'function') checkAuthAndInit();
-  }, 1800);
-  // Click to skip
-  document.addEventListener('DOMContentLoaded', function(){
-    var sp = document.getElementById('splash');
-    if(sp) sp.addEventListener('click', hideSplash);
-  });
-})();
-function loadProfile(){
-  try{
-    var p=JSON.parse(localStorage.getItem('asense_profile')||'{}');
-    ['name','title','phone','email','tg','note'].forEach(function(k){
-      var el=document.getElementById('mgr-'+k);
-      if(el&&p[k]) el.value=p[k];
-    });
-    var mf=document.getElementById('c-manager');
-    if(mf&&!mf.value&&p.name) mf.value=p.name;
-  }catch(e){}
-}
-
-
 const FAQ_DATA = [
   {
     q: "Какой минимальный заказ?",
@@ -1902,48 +1846,6 @@ function renderHistory(){
   }).join('');
 }
 
-function renderPrices(){
-  const priceRow = (p) => {
-    const base = BASE_PRICES[p.id];
-    const cur  = getPrice(p.id);
-    const changed = cur !== base;
-    return `<div style="display:grid;grid-template-columns:1fr 150px 110px;align-items:center;gap:10px;padding:8px 12px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:8px;background:${changed?'rgba(201,168,76,0.05)':'var(--surface)'};margin-bottom:5px">
-      <div>
-        <div style="font-size:13px">${p.name}</div>
-        <div style="font-size:11px;color:var(--muted)">${p.sub||p.unit||''} &nbsp;·&nbsp; базовая: <b>${fmt(base)}</b></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:5px">
-        <input type="number" id="pr-${p.id}" value="${cur}" min="0" step="50"
-          style="width:100%;padding:6px 8px;border:1px solid ${changed?'var(--gold)':'var(--border)'};border-radius:6px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit"
-          oninput="livePrice('${p.id}',this.value)">
-        <span style="font-size:11px;color:var(--muted)">₽</span>
-      </div>
-      <div style="font-size:11px;color:${changed?'var(--gold)':'var(--muted)'}">
-        ${changed?'✦ изменена':'базовая'}
-        ${changed?`<br><span style="cursor:pointer;text-decoration:underline;font-size:10px" onclick="resetOne('${p.id}')">сбросить</span>`:''}
-      </div>
-    </div>`;
-  };
-  const set = (id, items) => { const el=document.getElementById(id); if(el) el.innerHTML=items.map(priceRow).join(''); };
-  set('price-list-cosmetic', PRODUCTS.filter(p=>p.type==='cosmetic'));
-  set('price-list-aroma',    PRODUCTS.filter(p=>p.type==='aroma'));
-  set('price-list-mini',     PRODUCTS.filter(p=>p.type==='mini'));
-  set('price-list-b300',     PRODUCTS.filter(p=>p.type==='bottle300'));
-  set('price-list-b500',     PRODUCTS.filter(p=>p.type==='bottle500'));
-  set('price-list-equip',    EQUIP);
-}
-
-function livePrice(id, val){
-  const n = parseInt(val);
-  if(!isNaN(n) && n >= 0){
-    customPrices[id] = n;
-    [...PRODUCTS,...EQUIP].forEach(p=>{ if(p.id===id) p.price=n; });
-    localStorage.setItem('asense_prices', JSON.stringify(customPrices));
-    const el = document.getElementById('pr-'+id);
-    if(el) el.style.borderColor = n !== BASE_PRICES[id] ? 'var(--gold)' : 'var(--border)';
-  }
-}
-
 function savePrices(){
   [...PRODUCTS,...EQUIP].forEach(p=>{
     const el = document.getElementById('pr-'+p.id);
@@ -2122,336 +2024,6 @@ function toggleAroma(el, gid, name){
   if(s.has(name)){s.delete(name);el.classList.remove('on')}else{s.add(name);el.classList.add('on')}
 }
 
-function buildKPHtml(forPrint=false){
-  const pvDisc = document.getElementById('pv-discount');
-  const disc = pvDisc && pvDisc.value ? parseInt(pvDisc.value)||0 : getDisc();
-  const name=v('c-name'), contact=v('c-contact'), city=v('c-city'), addr=v('c-address'), phone=v('c-phone'), manager=v('c-manager'), note=v('c-note');
-  const segName={restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг',fitness:'фитнес-клуб'}[state.segment];
-  const date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
-
-  const metaParts=[];
-  if(name) metaParts.push(`<strong>${name}</strong>`);
-  if(segName) metaParts.push(segName);
-  const loc=[city,addr].filter(Boolean).join(', ');
-  if(loc) metaParts.push(loc);
-
-  const introParts=[];
-  if(contact) introParts.push(contact+', добрый день!');
-  else introParts.push('Добрый день!');
-  if(note) introParts.push(note);
-  else introParts.push('Направляем коммерческое предложение на продукцию Asense.');
-
-  let rows='', total=0;
-
-  const cosmetics = PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic');
-  const aromas    = PRODUCTS.filter(p=>state.checked[p.id]&&(p.type==='aroma'||p.type==='mini'));
-  const equips    = EQUIP.filter(e=>state.equip[e.id]);
-
-  if(cosmetics.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Косметика — канистры 5 000 мл</td></tr>`;
-    cosmetics.forEach(p=>{
-      const ap=adjPrice(p.price), q=calcCans(p.norm), s=ap*q;
-      total+=s;
-      const aroma = state.productAroma[p.id];
-      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
-      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} кан.</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
-    });
-  }
-  if(aromas.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Ароматизация</td></tr>`;
-    aromas.forEach(p=>{
-      const ap=adjPrice(p.price), q=state.qty[p.id]||1, s=ap*q;
-      total+=s;
-      const aroma = state.productAroma[p.id];
-      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
-      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} ${p.type==='mini'?'наб.':'шт.'}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
-    });
-  }
-  if(equips.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Оборудование</td></tr>`;
-    equips.forEach(e=>{
-      const ap=adjPrice(e.price), q=state.qty[e.id]||1, s=ap*q;
-      total+=s;
-      rows+=`<tr><td>${e.name}</td><td>${q} ${e.unit}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
-    });
-  }
-
-  const customs = state.customItems.filter(c=>c.name);
-  if(customs.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Дополнительно</td></tr>`;
-    customs.forEach(c=>{
-      const p=c.price||0, q=c.qty||1, s=p*q;
-      total+=s;
-      const isFree = p<=1;
-      rows+=`<tr${isFree?' class="kp-free"':''}><td>${c.name}</td><td>${q} шт.</td><td>${isFree?'—':fmt(p)}</td><td style="${isFree?'color:#2E7D32;font-weight:500':''}">${isFree?'Бесплатно':fmt(s)}</td></tr>`;
-    });
-  }
-
-  rows+=`<tr class="kp-free"><td>Флаконы 300 мл</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-free"><td>Брендирование флаконов (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-free"><td>Помпы для канистр 5 л (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-tot"><td colspan="3">Итого к оплате</td><td>${fmt(total)}</td></tr>`;
-
-  let aromaNote='';
-  const ac=[...state.aromasCos], ad=[...state.aromasDiff,...state.aromasSpa];
-  if(ac.length||ad.length){
-    aromaNote='<div class="kp-aromanote">';
-    if(ac.length) aromaNote+=`<div><strong>Ароматы (косметика):</strong> ${ac.join(' · ')}</div>`;
-    if(ad.length) aromaNote+=`<div><strong>Ароматы (ароматизация):</strong> ${ad.join(' · ')}</div>`;
-    aromaNote+='</div>';
-  }
-
-  const managerLine = manager ? `<div style="margin-top:12px;font-size:11px;color:#999">Менеджер: ${manager}</div>` : '';
-
-  return `<div class="kp-doc" id="kp-printable">
-    <div class="kp-hdr">
-      <div>
-        <div class="kp-brand">As<em>é</em>nse</div>
-        <div class="kp-brand-sub">Производитель премиальной косметики</div>
-        ${metaParts.length ? `<div style="margin-top:8px;font-size:11px;color:#777">${metaParts.join(' · ')}</div>` : ''}
-      </div>
-      <div class="kp-req">
-        <strong>ООО «АСЕНС»</strong><br>
-        143422, МО, г.о. Красногорск<br>
-        ул. Полевая, стр. 35А<br>
-        ИНН 5024230644 ОГРН 1235000029659<br>
-        +7 (495) 970-86-40 · commerce@asense.store
-      </div>
-    </div>
-    <div class="kp-date">${date}</div>
-    <div class="kp-heading">Коммерческое предложение</div>
-    <p class="kp-intro">${introParts.join(' ')}</p>
-    <table class="kp-t">
-      <thead><tr><th>Продукт</th><th>Кол-во</th><th>Цена / ед.</th><th>Сумма</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    ${aromaNote}
-    ${managerLine}
-    ${footerNote ? `<div style="margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555">${footerNote}</div>` : ''}
-    ${pvConditionVal ? `<div style="margin-top:8px;font-size:11px;color:#555">📌 ${pvConditionVal}</div>` : ''}
-    <div class="kp-foot">
-      ${(function(){var p=getProfile();var mgr='';if(p.name){mgr='<strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · TG: '+p.tg:'')+'<br>';}return mgr;})()}
-      <strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>
-      АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974
-    </div>
-  </div>`;
-}
-
-
-function buildKPHtml(forPrint=false){
-  const pvDisc = document.getElementById('pv-discount');
-  const disc = pvDisc && pvDisc.value ? parseInt(pvDisc.value)||0 : getDisc();
-  const name=v('c-name'), contact=v('c-contact'), city=v('c-city'), addr=v('c-address'), phone=v('c-phone'), manager=v('c-manager'), note=v('c-note');
-  const segName={restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг',fitness:'фитнес-клуб'}[state.segment];
-  const date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
-
-  const metaParts=[];
-  if(name) metaParts.push(`<strong>${name}</strong>`);
-  if(segName) metaParts.push(segName);
-  const loc=[city,addr].filter(Boolean).join(', ');
-  if(loc) metaParts.push(loc);
-
-  const introParts=[];
-  if(contact) introParts.push(contact+', добрый день!');
-  else introParts.push('Добрый день!');
-  if(note) introParts.push(note);
-  else introParts.push('Направляем коммерческое предложение на продукцию Asense.');
-
-  let rows='', total=0;
-
-  const cosmetics = PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic');
-  const aromas    = PRODUCTS.filter(p=>state.checked[p.id]&&(p.type==='aroma'||p.type==='mini'));
-  const equips    = EQUIP.filter(e=>state.equip[e.id]);
-
-  if(cosmetics.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Косметика — канистры 5 000 мл</td></tr>`;
-    cosmetics.forEach(p=>{
-      const ap=adjPrice(p.price), q=calcCans(p.norm), s=ap*q;
-      total+=s;
-      const aroma = state.productAroma[p.id];
-      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
-      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} кан.</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
-    });
-  }
-  if(aromas.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Ароматизация</td></tr>`;
-    aromas.forEach(p=>{
-      const ap=adjPrice(p.price), q=state.qty[p.id]||1, s=ap*q;
-      total+=s;
-      const aroma = state.productAroma[p.id];
-      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
-      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} ${p.type==='mini'?'наб.':'шт.'}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
-    });
-  }
-  if(equips.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Оборудование</td></tr>`;
-    equips.forEach(e=>{
-      const ap=adjPrice(e.price), q=state.qty[e.id]||1, s=ap*q;
-      total+=s;
-      rows+=`<tr><td>${e.name}</td><td>${q} ${e.unit}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
-    });
-  }
-
-  const customs = state.customItems.filter(c=>c.name);
-  if(customs.length){
-    rows+=`<tr class="kp-sec"><td colspan="4">Дополнительно</td></tr>`;
-    customs.forEach(c=>{
-      const p=c.price||0, q=c.qty||1, s=p*q;
-      total+=s;
-      const isFree = p<=1;
-      rows+=`<tr${isFree?' class="kp-free"':''}><td>${c.name}</td><td>${q} шт.</td><td>${isFree?'—':fmt(p)}</td><td style="${isFree?'color:#2E7D32;font-weight:500':''}">${isFree?'Бесплатно':fmt(s)}</td></tr>`;
-    });
-  }
-
-  rows+=`<tr class="kp-free"><td>Флаконы 300 мл</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-free"><td>Брендирование флаконов (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-free"><td>Помпы для канистр 5 л (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-tot"><td colspan="3">Итого к оплате</td><td>${fmt(total)}</td></tr>`;
-
-  let aromaNote='';
-  const ac=[...state.aromasCos], ad=[...state.aromasDiff,...state.aromasSpa];
-  if(ac.length||ad.length){
-    aromaNote='<div class="kp-aromanote">';
-    if(ac.length) aromaNote+=`<div><strong>Ароматы (косметика):</strong> ${ac.join(' · ')}</div>`;
-    if(ad.length) aromaNote+=`<div><strong>Ароматы (ароматизация):</strong> ${ad.join(' · ')}</div>`;
-    aromaNote+='</div>';
-  }
-
-  const managerLine = manager ? `<div style="margin-top:12px;font-size:11px;color:#999">Менеджер: ${manager}</div>` : '';
-
-  return `<div class="kp-doc" id="kp-printable">
-    <div class="kp-hdr">
-      <div>
-        <div class="kp-brand">As<em>é</em>nse</div>
-        <div class="kp-brand-sub">Производитель премиальной косметики</div>
-        ${metaParts.length ? `<div style="margin-top:8px;font-size:11px;color:#777">${metaParts.join(' · ')}</div>` : ''}
-      </div>
-      <div class="kp-req">
-        <strong>ООО «АСЕНС»</strong><br>
-        143422, МО, г.о. Красногорск<br>
-        ул. Полевая, стр. 35А<br>
-        ИНН 5024230644 ОГРН 1235000029659<br>
-        +7 (495) 970-86-40 · commerce@asense.store
-      </div>
-    </div>
-    <div class="kp-date">${date}</div>
-    <div class="kp-heading">Коммерческое предложение</div>
-    <p class="kp-intro">${introParts.join(' ')}</p>
-    <table class="kp-t">
-      <thead><tr><th>Продукт</th><th>Кол-во</th><th>Цена / ед.</th><th>Сумма</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    ${aromaNote}
-    ${managerLine}
-    ${footerNote ? `<div style="margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555">${footerNote}</div>` : ''}
-    ${pvConditionVal ? `<div style="margin-top:8px;font-size:11px;color:#555">📌 ${pvConditionVal}</div>` : ''}
-    <div class="kp-foot">
-      ${(function(){var p=getProfile();var mgr='';if(p.name){mgr='<strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · TG: '+p.tg:'')+'<br>';}return mgr;})()}
-      <strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>
-      АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974
-    </div>
-  </div>`;
-}
-
-function renderPreview(){
-  document.getElementById('preview-wrap').innerHTML = buildKPHtml();
-}
-
-
-function renderPreview(){
-  document.getElementById('preview-wrap').innerHTML = buildKPHtml();
-}
-
-function printKP(){
-  renderPreview();
-  const kp = document.getElementById('kp-printable');
-  if(!kp) return;
-  const w = window.open('','_blank','width=820,height=1000');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Asense</title>
-  <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;padding:0}
-  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
-  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
-  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}
-  .kp-brand em{font-style:italic}
-  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
-  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
-  .kp-req strong{color:#1a1a1a}
-  .kp-date{font-size:11px;color:#999}
-  .kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
-  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
-  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
-  table.kp-t thead tr{background:#1A1A2E}
-  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
-  table.kp-t thead th:not(:first-child){text-align:right}
-  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
-  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
-  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
-  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
-  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
-  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
-  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
-  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
-  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
-  .kp-foot strong{color:#1a1a1a}
-  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
-  @media print{.print-btn{display:none}}
-  </style></head><body>
-  ${kp.outerHTML}
-  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
-  </body></html>`);
-  w.document.close();
-}
-
-
-function printKP(){
-  renderPreview();
-  const kp = document.getElementById('kp-printable');
-  if(!kp) return;
-  const w = window.open('','_blank','width=820,height=1000');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Asense</title>
-  <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;padding:0}
-  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
-  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
-  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}
-  .kp-brand em{font-style:italic}
-  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
-  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
-  .kp-req strong{color:#1a1a1a}
-  .kp-date{font-size:11px;color:#999}
-  .kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
-  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
-  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
-  table.kp-t thead tr{background:#1A1A2E}
-  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
-  table.kp-t thead th:not(:first-child){text-align:right}
-  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
-  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
-  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
-  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
-  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
-  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
-  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
-  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
-  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
-  .kp-foot strong{color:#1a1a1a}
-  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
-  @media print{.print-btn{display:none}}
-  </style></head><body>
-  ${kp.outerHTML}
-  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
-  </body></html>`);
-  w.document.close();
-}
-
-function fmtXL(n){return Math.round(n).toLocaleString('ru-RU')+' ₽'}
-
-
-function fmtXL(n){return Math.round(n).toLocaleString('ru-RU')+' ₽'}
-
 function xlCell(v, opts){
   opts = opts||{};
   const isNum = typeof v === 'number';
@@ -2489,660 +2061,6 @@ function buildSheet(rows2d, merges, colWidths, rowHeights){
   if(colWidths) ws['!cols']=colWidths;
   if(rowHeights) ws['!rows']=rowHeights;
   return ws;
-}
-
-function exportExcel(){
-  const disc    = getDisc();
-  const guests  = getGuests();
-  const days    = getDays();
-  const cName   = v('c-name')||'Клиент';
-  const cCity   = v('c-city');
-  const date    = new Date().toLocaleDateString('ru-RU');
-
-  const D='1A1A2E',G='C9A84C',NV='2E4057',CR='F5F2EC',WH='FFFFFF',GR='F9F7F4',GB='E8F5E9',GT='2E7D32',YL='FFFDE7';
-
-  function hdr(v,bg,fg,sz,al){return xlCell(v,{bg:bg||D,fg:fg||WH,bold:true,sz:sz||10,align:al||'left'});}
-  function sub(v){return xlCell(v,{bg:D,fg:'AAAAAA',sz:9});}
-  function sec(v){return xlCell(v,{bg:NV,fg:WH,bold:true,sz:10});}
-  function dat(v,bg,al){return xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:al||'left'});}
-  function num(v,bg,formula){return formula?xlCell(formula,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'}):xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'});}
-  function tot(v,gold){return xlCell(v,{bg:D,fg:gold?G:WH,bold:true,sz:gold?12:10,align:gold?'right':'left'});}
-  function free(v){return xlCell(v,{bg:GB,fg:GT,sz:10});}
-  function inp(v){return xlCell(v,{bg:YL,fg:'0000AA',bold:true,sz:11,align:'center'});}
-  function empty(bg){return xlCell('',{bg:bg||WH});}
-
-  const cosm = PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='cosmetic';});
-  const selProds = PRODUCTS.filter(function(p){return state.checked[p.id];});
-  const selEquip = EQUIP.filter(function(e){return state.equip[e.id];});
-
-  // ============================================================
-  // ЛИСТ 1 — КП (продукты + цены + формулы)
-  // ============================================================
-  var r1 = [];
-  var m1 = [];
-  var totalRow;
-
-  const clientMeta = [cName,cCity].filter(Boolean).join('  ·  ');
-  r1.push([hdr('ASENSE — Коммерческое предложение',D,G,14,'center'),null,null,null,null]);
-  r1.push([sub(clientMeta||'ООО «АСЕНС»'),null,null,null,sub(date)]);
-  r1.push([null,null,null,null,null]);
-  r1.push([hdr('Продукт',NV),hdr('Объём',NV,WH,10,'center'),hdr('Кол-во',NV,WH,10,'center'),hdr('Цена / ед., ₽',NV,G,10,'center'),hdr('Сумма, ₽',NV,G,10,'right')]);
-  m1.push({s:{r:0,c:0},e:{r:0,c:4}});
-  m1.push({s:{r:1,c:0},e:{r:1,c:3}});
-
-  var dataStartRow = 4;
-
-  function addSec1(label, items, isEquip){
-    if(!items.length) return;
-    r1.push([sec(label),sec(''),sec(''),sec(''),sec('')]);
-    items.forEach(function(p,i){
-      const ap = Math.round(p.price*(1-disc/100));
-      const q  = isEquip?(state.qty[p.id]||1):(p.norm>0?calcCans(p.norm):(state.qty[p.id]||1));
-      const ri = r1.length;
-      const bg = i%2===0?CR:WH;
-      const aroma = state.productAroma[p.id];
-      const nm = p.name+(aroma?' ('+aroma+')':'');
-      const vol = p.vol||p.sub||'';
-      // C=qty(col3), D=price(col4), E=formula sum
-      r1.push([dat(nm,bg),dat(vol,bg,'center'),inp(q),inp(ap),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
-    });
-  }
-
-  addSec1('Косметика — канистры 5 000 мл', cosm, false);
-  addSec1('Ароматизация', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='aroma';}), false);
-  addSec1('Миниатюры / Наборы', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='mini';}), false);
-  addSec1('Флаконы 300 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle300';}), false);
-  addSec1('Флаконы 500 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle500';}), false);
-  addSec1('Оборудование', selEquip, true);
-
-  const customs = state.customItems.filter(function(c){return c.name;});
-  if(customs.length){
-    r1.push([sec('Дополнительно'),sec(''),sec(''),sec(''),sec('')]);
-    customs.forEach(function(c,i){
-      const ri=r1.length;
-      const bg=i%2===0?CR:WH;
-      if((c.price||0)<=1){
-        r1.push([free(c.name),free(''),free(c.qty||1),free('Бесплатно'),free('Бесплатно')]);
-      } else {
-        r1.push([dat(c.name,bg),dat('',bg,'center'),inp(c.qty||1),inp(c.price||0),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
-      }
-    });
-  }
-
-  r1.push([free('Флаконы 300 мл (первые 4 шт., от 30 000 ₽)'),free('4 шт.'),free(''),free('—'),free('Бесплатно')]);
-  r1.push([free('Брендирование флаконов (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
-  r1.push([free('Помпы для канистр 5 л (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
-
-  // Total row with SUM formula
-  const totRowIdx = r1.length+1;
-  const sumFormula = '=SUM(E'+dataStartRow+':E'+(r1.length)+')';
-  r1.push([tot(''),tot(''),tot(''),tot('ИТОГО К ОПЛАТЕ'),tot(sumFormula,true)]);
-  r1.push([null,null,null,null,null]);
-  r1.push([xlCell('🟡 Жёлтые ячейки можно редактировать — кол-во и цены пересчитаются автоматически',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null]);
-  r1.push([xlCell('🚚 Доставка до терминалов СДЭК и ТК КИТ — бесплатно',{bg:GR,fg:'666666',sz:9}),null,null,null,null]);
-  r1.push([xlCell('ASENSE · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru',{bg:GR,fg:'888888',sz:9}),null,null,null,null]);
-
-  const lastRow = r1.length;
-  m1.push({s:{r:lastRow-3,c:0},e:{r:lastRow-3,c:4}});
-  m1.push({s:{r:lastRow-2,c:0},e:{r:lastRow-2,c:4}});
-  m1.push({s:{r:lastRow-1,c:0},e:{r:lastRow-1,c:4}});
-
-  const ws1 = buildSheet(r1, m1, [{wch:40},{wch:12},{wch:10},{wch:14},{wch:14}], [{hpt:28},{hpt:14}]);
-
-  // ============================================================
-  // ЛИСТ 2 — Расчёт расхода (занятость + фитнес)
-  // ============================================================
-  var r2 = [];
-  var m2 = [];
-
-  const scenarios = [{n:'50%',m:0.5},{n:'70%',m:0.7},{n:'100%',m:1.0}];
-
-  r2.push([hdr('ASENSE — Расчёт расхода косметики по зонам',D,G,13),null,null,null,null,null,null,null,null,null]);
-  r2.push([sub([cName,'Гостей/день: '+guests,'Рабочих дней: '+days].filter(Boolean).join('  ·  ')),null,null,null,null,null,null,null,null,null]);
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:0,c:0},e:{r:0,c:9}});
-  m2.push({s:{r:1,c:0},e:{r:1,c:9}});
-
-  // Params block (yellow — editable)
-  r2.push([hdr('Параметры (редактировать)',NV),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:3,c:0},e:{r:3,c:9}});
-
-  r2.push([dat('Гостей в день (номерной фонд)'),null,inp(guests),null,dat('Рабочих дней в месяц'),null,inp(days),null,null,null]);
-  r2.push([dat('Гостей в день (фитнес/спа)'),null,inp(Math.round(guests*0.3)),null,dat('Скидка %'),null,inp(disc),null,null,null]);
-
-  const GR_ROW = 4; // row index of guests (1-based = 5, 0-based = 4)
-  const FIT_ROW = 5;
-  const DAYS_COL = 'G'; // col index
-  const DISC_COL = 'G';
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // --- ЗОНА 1: НОМЕРНОЙ ФОНД ---
-  r2.push([hdr('ЗОНА 1 — Номерной фонд / Стандартные номера',NV,WH,11),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const hdrRow2 = [dat('Продукт',NV.replace('2E4057','F0F4F8')),dat('Норма мл/гость',NV.replace('2E4057','F0F4F8'),'center')];
-  scenarios.forEach(function(s){
-    hdrRow2.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
-    hdrRow2.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
-  });
-  hdrRow2.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
-  r2.push(hdrRow2);
-
-  cosm.forEach(function(p,pi){
-    const ap = Math.round(p.price*(1-disc/100));
-    const bg = pi%2===0?CR:WH;
-    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
-    const ri = r2.length+1;
-    scenarios.forEach(function(sc,si){
-      // Formula: =MAX(1,ROUNDUP(C5*G5*norm/5000,0)) where C5=guests, G5=days
-      const gRef = 'C5'; const dRef = 'G5';
-      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
-      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
-      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
-      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
-    });
-    // В год = sum at 100% * 12
-    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
-    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
-    r2.push(row);
-  });
-
-  // Subtotal hotel
-  const htStart = 9; // approx
-  const htEnd = r2.length;
-  r2.push([
-    tot('ИТОГО номерной фонд'),tot(''),
-    xlCell('=SUM(C'+htStart+':C'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(D'+htStart+':D'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(E'+htStart+':E'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(F'+htStart+':F'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(G'+htStart+':G'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(H'+htStart+':H'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    tot(''),
-    xlCell('=SUM(J'+htStart+':J'+htEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
-  ]);
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // --- ЗОНА 2: ФИТНЕС / СПА ---
-  r2.push([hdr('ЗОНА 2 — Фитнес / СПА',NV,WH,11),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const hdrRow3 = [dat('Продукт'),dat('Норма мл/гость','','center')];
-  scenarios.forEach(function(s){
-    hdrRow3.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
-    hdrRow3.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
-  });
-  hdrRow3.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
-  r2.push(hdrRow3);
-
-  cosm.forEach(function(p,pi){
-    const ap = Math.round(p.price*(1-disc/100));
-    const bg = pi%2===0?'EDE9FE':WH;
-    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
-    const ri = r2.length+1;
-    scenarios.forEach(function(sc,si){
-      const gRef = 'C6'; // fitness guests row
-      const dRef = 'G5';
-      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
-      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
-      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
-      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
-    });
-    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
-    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
-    r2.push(row);
-  });
-
-  const fitStart = htEnd+4;
-  const fitEnd = r2.length;
-  r2.push([
-    tot('ИТОГО фитнес/спа'),tot(''),
-    xlCell('=SUM(C'+fitStart+':C'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(D'+fitStart+':D'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(E'+fitStart+':E'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(F'+fitStart+':F'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(G'+fitStart+':G'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(H'+fitStart+':H'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    tot(''),
-    xlCell('=SUM(J'+fitStart+':J'+fitEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
-  ]);
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // Grand total
-  r2.push([
-    tot('ИТОГО ПО ВСЕМ ЗОНАМ'),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),
-    xlCell('=J'+(htEnd+1)+'+J'+(fitEnd+1),{bg:D,fg:G,bold:true,sz:13,align:'right'}),
-  ]);
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-  r2.push([xlCell('🟡 Измените гостей/день и скидку в строках 5-6 — все расчёты пересчитаются',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const ws2 = buildSheet(r2, m2,
-    [{wch:36},{wch:14},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:14}],
-    [{hpt:24},{hpt:13}]
-  );
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws1, 'КП');
-  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт расхода');
-  XLSX.writeFile(wb, 'КП_Asense_'+cName.replace(/\s/g,'_')+'.xlsx');
-}
-
-
-
-function exportExcel(){
-  const disc    = getDisc();
-  const guests  = getGuests();
-  const days    = getDays();
-  const cName   = v('c-name')||'Клиент';
-  const cCity   = v('c-city');
-  const date    = new Date().toLocaleDateString('ru-RU');
-
-  const D='1A1A2E',G='C9A84C',NV='2E4057',CR='F5F2EC',WH='FFFFFF',GR='F9F7F4',GB='E8F5E9',GT='2E7D32',YL='FFFDE7';
-
-  function hdr(v,bg,fg,sz,al){return xlCell(v,{bg:bg||D,fg:fg||WH,bold:true,sz:sz||10,align:al||'left'});}
-  function sub(v){return xlCell(v,{bg:D,fg:'AAAAAA',sz:9});}
-  function sec(v){return xlCell(v,{bg:NV,fg:WH,bold:true,sz:10});}
-  function dat(v,bg,al){return xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:al||'left'});}
-  function num(v,bg,formula){return formula?xlCell(formula,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'}):xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'});}
-  function tot(v,gold){return xlCell(v,{bg:D,fg:gold?G:WH,bold:true,sz:gold?12:10,align:gold?'right':'left'});}
-  function free(v){return xlCell(v,{bg:GB,fg:GT,sz:10});}
-  function inp(v){return xlCell(v,{bg:YL,fg:'0000AA',bold:true,sz:11,align:'center'});}
-  function empty(bg){return xlCell('',{bg:bg||WH});}
-
-  const cosm = PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='cosmetic';});
-  const selProds = PRODUCTS.filter(function(p){return state.checked[p.id];});
-  const selEquip = EQUIP.filter(function(e){return state.equip[e.id];});
-
-  // ============================================================
-  // ЛИСТ 1 — КП (продукты + цены + формулы)
-  // ============================================================
-  var r1 = [];
-  var m1 = [];
-  var totalRow;
-
-  const clientMeta = [cName,cCity].filter(Boolean).join('  ·  ');
-  r1.push([hdr('ASENSE — Коммерческое предложение',D,G,14,'center'),null,null,null,null]);
-  r1.push([sub(clientMeta||'ООО «АСЕНС»'),null,null,null,sub(date)]);
-  r1.push([null,null,null,null,null]);
-  r1.push([hdr('Продукт',NV),hdr('Объём',NV,WH,10,'center'),hdr('Кол-во',NV,WH,10,'center'),hdr('Цена / ед., ₽',NV,G,10,'center'),hdr('Сумма, ₽',NV,G,10,'right')]);
-  m1.push({s:{r:0,c:0},e:{r:0,c:4}});
-  m1.push({s:{r:1,c:0},e:{r:1,c:3}});
-
-  var dataStartRow = 4;
-
-  function addSec1(label, items, isEquip){
-    if(!items.length) return;
-    r1.push([sec(label),sec(''),sec(''),sec(''),sec('')]);
-    items.forEach(function(p,i){
-      const ap = Math.round(p.price*(1-disc/100));
-      const q  = isEquip?(state.qty[p.id]||1):(p.norm>0?calcCans(p.norm):(state.qty[p.id]||1));
-      const ri = r1.length;
-      const bg = i%2===0?CR:WH;
-      const aroma = state.productAroma[p.id];
-      const nm = p.name+(aroma?' ('+aroma+')':'');
-      const vol = p.vol||p.sub||'';
-      // C=qty(col3), D=price(col4), E=formula sum
-      r1.push([dat(nm,bg),dat(vol,bg,'center'),inp(q),inp(ap),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
-    });
-  }
-
-  addSec1('Косметика — канистры 5 000 мл', cosm, false);
-  addSec1('Ароматизация', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='aroma';}), false);
-  addSec1('Миниатюры / Наборы', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='mini';}), false);
-  addSec1('Флаконы 300 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle300';}), false);
-  addSec1('Флаконы 500 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle500';}), false);
-  addSec1('Оборудование', selEquip, true);
-
-  const customs = state.customItems.filter(function(c){return c.name;});
-  if(customs.length){
-    r1.push([sec('Дополнительно'),sec(''),sec(''),sec(''),sec('')]);
-    customs.forEach(function(c,i){
-      const ri=r1.length;
-      const bg=i%2===0?CR:WH;
-      if((c.price||0)<=1){
-        r1.push([free(c.name),free(''),free(c.qty||1),free('Бесплатно'),free('Бесплатно')]);
-      } else {
-        r1.push([dat(c.name,bg),dat('',bg,'center'),inp(c.qty||1),inp(c.price||0),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
-      }
-    });
-  }
-
-  r1.push([free('Флаконы 300 мл (первые 4 шт., от 30 000 ₽)'),free('4 шт.'),free(''),free('—'),free('Бесплатно')]);
-  r1.push([free('Брендирование флаконов (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
-  r1.push([free('Помпы для канистр 5 л (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
-
-  // Total row with SUM formula
-  const totRowIdx = r1.length+1;
-  const sumFormula = '=SUM(E'+dataStartRow+':E'+(r1.length)+')';
-  r1.push([tot(''),tot(''),tot(''),tot('ИТОГО К ОПЛАТЕ'),tot(sumFormula,true)]);
-  r1.push([null,null,null,null,null]);
-  r1.push([xlCell('🟡 Жёлтые ячейки можно редактировать — кол-во и цены пересчитаются автоматически',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null]);
-  r1.push([xlCell('🚚 Доставка до терминалов СДЭК и ТК КИТ — бесплатно',{bg:GR,fg:'666666',sz:9}),null,null,null,null]);
-  r1.push([xlCell('ASENSE · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru',{bg:GR,fg:'888888',sz:9}),null,null,null,null]);
-
-  const lastRow = r1.length;
-  m1.push({s:{r:lastRow-3,c:0},e:{r:lastRow-3,c:4}});
-  m1.push({s:{r:lastRow-2,c:0},e:{r:lastRow-2,c:4}});
-  m1.push({s:{r:lastRow-1,c:0},e:{r:lastRow-1,c:4}});
-
-  const ws1 = buildSheet(r1, m1, [{wch:40},{wch:12},{wch:10},{wch:14},{wch:14}], [{hpt:28},{hpt:14}]);
-
-  // ============================================================
-  // ЛИСТ 2 — Расчёт расхода (занятость + фитнес)
-  // ============================================================
-  var r2 = [];
-  var m2 = [];
-
-  const scenarios = [{n:'50%',m:0.5},{n:'70%',m:0.7},{n:'100%',m:1.0}];
-
-  r2.push([hdr('ASENSE — Расчёт расхода косметики по зонам',D,G,13),null,null,null,null,null,null,null,null,null]);
-  r2.push([sub([cName,'Гостей/день: '+guests,'Рабочих дней: '+days].filter(Boolean).join('  ·  ')),null,null,null,null,null,null,null,null,null]);
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:0,c:0},e:{r:0,c:9}});
-  m2.push({s:{r:1,c:0},e:{r:1,c:9}});
-
-  // Params block (yellow — editable)
-  r2.push([hdr('Параметры (редактировать)',NV),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:3,c:0},e:{r:3,c:9}});
-
-  r2.push([dat('Гостей в день (номерной фонд)'),null,inp(guests),null,dat('Рабочих дней в месяц'),null,inp(days),null,null,null]);
-  r2.push([dat('Гостей в день (фитнес/спа)'),null,inp(Math.round(guests*0.3)),null,dat('Скидка %'),null,inp(disc),null,null,null]);
-
-  const GR_ROW = 4; // row index of guests (1-based = 5, 0-based = 4)
-  const FIT_ROW = 5;
-  const DAYS_COL = 'G'; // col index
-  const DISC_COL = 'G';
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // --- ЗОНА 1: НОМЕРНОЙ ФОНД ---
-  r2.push([hdr('ЗОНА 1 — Номерной фонд / Стандартные номера',NV,WH,11),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const hdrRow2 = [dat('Продукт',NV.replace('2E4057','F0F4F8')),dat('Норма мл/гость',NV.replace('2E4057','F0F4F8'),'center')];
-  scenarios.forEach(function(s){
-    hdrRow2.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
-    hdrRow2.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
-  });
-  hdrRow2.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
-  r2.push(hdrRow2);
-
-  cosm.forEach(function(p,pi){
-    const ap = Math.round(p.price*(1-disc/100));
-    const bg = pi%2===0?CR:WH;
-    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
-    const ri = r2.length+1;
-    scenarios.forEach(function(sc,si){
-      // Formula: =MAX(1,ROUNDUP(C5*G5*norm/5000,0)) where C5=guests, G5=days
-      const gRef = 'C5'; const dRef = 'G5';
-      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
-      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
-      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
-      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
-    });
-    // В год = sum at 100% * 12
-    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
-    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
-    r2.push(row);
-  });
-
-  // Subtotal hotel
-  const htStart = 9; // approx
-  const htEnd = r2.length;
-  r2.push([
-    tot('ИТОГО номерной фонд'),tot(''),
-    xlCell('=SUM(C'+htStart+':C'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(D'+htStart+':D'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(E'+htStart+':E'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(F'+htStart+':F'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(G'+htStart+':G'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(H'+htStart+':H'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    tot(''),
-    xlCell('=SUM(J'+htStart+':J'+htEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
-  ]);
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // --- ЗОНА 2: ФИТНЕС / СПА ---
-  r2.push([hdr('ЗОНА 2 — Фитнес / СПА',NV,WH,11),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const hdrRow3 = [dat('Продукт'),dat('Норма мл/гость','','center')];
-  scenarios.forEach(function(s){
-    hdrRow3.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
-    hdrRow3.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
-  });
-  hdrRow3.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
-  r2.push(hdrRow3);
-
-  cosm.forEach(function(p,pi){
-    const ap = Math.round(p.price*(1-disc/100));
-    const bg = pi%2===0?'EDE9FE':WH;
-    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
-    const ri = r2.length+1;
-    scenarios.forEach(function(sc,si){
-      const gRef = 'C6'; // fitness guests row
-      const dRef = 'G5';
-      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
-      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
-      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
-      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
-    });
-    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
-    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
-    r2.push(row);
-  });
-
-  const fitStart = htEnd+4;
-  const fitEnd = r2.length;
-  r2.push([
-    tot('ИТОГО фитнес/спа'),tot(''),
-    xlCell('=SUM(C'+fitStart+':C'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(D'+fitStart+':D'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(E'+fitStart+':E'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(F'+fitStart+':F'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    xlCell('=SUM(G'+fitStart+':G'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
-    xlCell('=SUM(H'+fitStart+':H'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
-    tot(''),
-    xlCell('=SUM(J'+fitStart+':J'+fitEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
-  ]);
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-
-  // Grand total
-  r2.push([
-    tot('ИТОГО ПО ВСЕМ ЗОНАМ'),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),
-    xlCell('=J'+(htEnd+1)+'+J'+(fitEnd+1),{bg:D,fg:G,bold:true,sz:13,align:'right'}),
-  ]);
-
-  r2.push([null,null,null,null,null,null,null,null,null,null]);
-  r2.push([xlCell('🟡 Измените гостей/день и скидку в строках 5-6 — все расчёты пересчитаются',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null,null,null,null,null,null]);
-  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
-
-  const ws2 = buildSheet(r2, m2,
-    [{wch:36},{wch:14},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:14}],
-    [{hpt:24},{hpt:13}]
-  );
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws1, 'КП');
-  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт расхода');
-  XLSX.writeFile(wb, 'КП_Asense_'+cName.replace(/\s/g,'_')+'.xlsx');
-}
-
-
-function previewSave(id){
-  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
-  const s = saves.find(x=>x.id===id);
-  if(!s) return;
-  const html = s.kpHtml || '<p style="padding:20px;color:#999">Предпросмотр недоступен для старых КП — откройте и пересохраните.</p>';
-  const w = window.open('','_blank','width=820,height=900');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП — ${s.name}</title>
-  <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f1;padding:20px}
-  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
-  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
-  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}.kp-brand em{font-style:italic}
-  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
-  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}.kp-req strong{color:#1a1a1a}
-  .kp-date{font-size:11px;color:#999}.kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
-  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
-  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
-  table.kp-t thead tr{background:#1A1A2E}
-  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
-  table.kp-t thead th:not(:first-child){text-align:right}
-  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
-  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
-  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
-  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
-  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
-  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
-  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
-  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
-  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
-  .kp-foot strong{color:#1a1a1a}
-  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
-  @media print{.print-btn{display:none}body{background:#fff;padding:0}}
-  </style></head><body>
-  ${html}
-  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
-  </body></html>`);
-  w.document.close();
-}
-
-
-function previewSave(id){
-  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
-  const s = saves.find(x=>x.id===id);
-  if(!s) return;
-  const html = s.kpHtml || '<p style="padding:20px;color:#999">Предпросмотр недоступен для старых КП — откройте и пересохраните.</p>';
-  const w = window.open('','_blank','width=820,height=900');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП — ${s.name}</title>
-  <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f1;padding:20px}
-  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
-  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
-  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}.kp-brand em{font-style:italic}
-  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
-  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}.kp-req strong{color:#1a1a1a}
-  .kp-date{font-size:11px;color:#999}.kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
-  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
-  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
-  table.kp-t thead tr{background:#1A1A2E}
-  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
-  table.kp-t thead th:not(:first-child){text-align:right}
-  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
-  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
-  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
-  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
-  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
-  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
-  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
-  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
-  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
-  .kp-foot strong{color:#1a1a1a}
-  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
-  @media print{.print-btn{display:none}body{background:#fff;padding:0}}
-  </style></head><body>
-  ${html}
-  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
-  </body></html>`);
-  w.document.close();
-}
-
-function exportBackupJSON(){
-  const data = {
-    version: 1,
-    exported: new Date().toISOString(),
-    kp: JSON.parse(localStorage.getItem('asense_kp')||'[]'),
-    prices: JSON.parse(localStorage.getItem('asense_prices')||'{}'),
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.json';
-  a.click();
-}
-
-
-function exportBackupJSON(){
-  const data = {
-    version: 1,
-    exported: new Date().toISOString(),
-    kp: JSON.parse(localStorage.getItem('asense_kp')||'[]'),
-    prices: JSON.parse(localStorage.getItem('asense_prices')||'{}'),
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.json';
-  a.click();
-}
-
-function exportBackupExcel(){
-  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
-  const prices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
-  const wb = XLSX.utils.book_new();
-
-  // Sheet 1: КП
-  const rows1 = [['ID','Название','Сегмент','Дата','Итого','Город','Контакт','Менеджер']];
-  saves.forEach(s=>{
-    rows1.push([s.id, s.name, s.segment, s.date, s.total||'', s.inputs?.city||'', s.inputs?.contact||'', s.inputs?.manager||'']);
-  });
-  const ws1 = XLSX.utils.aoa_to_sheet(rows1);
-  ws1['!cols']=[{wch:14},{wch:28},{wch:12},{wch:12},{wch:14},{wch:20},{wch:20},{wch:16}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'История КП');
-
-  // Sheet 2: Цены
-  const rows2 = [['ID продукта','Название','Цена базовая ₽','Цена текущая ₽']];
-  [...PRODUCTS,...EQUIP].forEach(p=>{
-    const base = BASE_PRICES[p.id];
-    const cur = prices[p.id] ?? base;
-    if(cur !== base) rows2.push([p.id, p.name, base, cur]);
-  });
-  if(rows2.length===1) rows2.push(['—','Все цены базовые','','']);
-  const ws2 = XLSX.utils.aoa_to_sheet(rows2);
-  ws2['!cols']=[{wch:16},{wch:36},{wch:16},{wch:16}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Изменённые цены');
-
-  XLSX.writeFile(wb, 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.xlsx');
-}
-
-
-function exportBackupExcel(){
-  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
-  const prices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
-  const wb = XLSX.utils.book_new();
-
-  // Sheet 1: КП
-  const rows1 = [['ID','Название','Сегмент','Дата','Итого','Город','Контакт','Менеджер']];
-  saves.forEach(s=>{
-    rows1.push([s.id, s.name, s.segment, s.date, s.total||'', s.inputs?.city||'', s.inputs?.contact||'', s.inputs?.manager||'']);
-  });
-  const ws1 = XLSX.utils.aoa_to_sheet(rows1);
-  ws1['!cols']=[{wch:14},{wch:28},{wch:12},{wch:12},{wch:14},{wch:20},{wch:20},{wch:16}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'История КП');
-
-  // Sheet 2: Цены
-  const rows2 = [['ID продукта','Название','Цена базовая ₽','Цена текущая ₽']];
-  [...PRODUCTS,...EQUIP].forEach(p=>{
-    const base = BASE_PRICES[p.id];
-    const cur = prices[p.id] ?? base;
-    if(cur !== base) rows2.push([p.id, p.name, base, cur]);
-  });
-  if(rows2.length===1) rows2.push(['—','Все цены базовые','','']);
-  const ws2 = XLSX.utils.aoa_to_sheet(rows2);
-  ws2['!cols']=[{wch:16},{wch:36},{wch:16},{wch:16}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Изменённые цены');
-
-  XLSX.writeFile(wb, 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.xlsx');
 }
 
 function importBackup(input){
@@ -3263,6 +2181,523 @@ function applyTemplate(seg){
   renderProducts(); recalc();
   alert('✅ Шаблон применён');
 }
+
+function updateTotals(){
+  let cans=0, sum=0;
+  PRODUCTS.forEach(p=>{
+    if(!state.checked[p.id]) return;
+    const ap = adjPrice(p.price);
+    const q = p.norm>0 ? calcCans(p.norm) : (state.qty[p.id]||1);
+    if(p.type==='cosmetic') cans+=q;
+    sum += ap*q;
+  });
+  EQUIP.forEach(e=>{
+    if(!state.equip[e.id]) return;
+    sum += adjPrice(e.price)*(state.qty[e.id]||1);
+  });
+  state.customItems.forEach(item=>{
+    if(item.name) sum += (item.price||0)*(item.qty||1);
+  });
+  document.getElementById('t-cans').textContent  = cans||'—';
+  document.getElementById('t-month').textContent = sum ? fmt(sum) : '—';
+  document.getElementById('t-year').textContent  = sum ? fmt(sum*12) : '—';
+}
+
+function renderAromas(){
+  const render = (id, arr, set) => {
+    document.getElementById(id).innerHTML = arr.map(a =>
+      `<div class="aroma-chip${set.has(a)?' on':''}" onclick="toggleAroma(this,'${id}','${a}')">${a}</div>`
+    ).join('');
+  };
+  render('ag-cos', AROMAS_COS, state.aromasCos);
+  render('ag-diff',AROMAS_DIFF,state.aromasDiff);
+  render('ag-spa', AROMAS_SPA, state.aromasSpa);
+}
+
+
+
+
+function deleteSave(id){
+  if(!confirm('Удалить это КП?')) return;
+  var saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  localStorage.setItem('asense_kp', JSON.stringify(saves.filter(function(s){return s.id!==id;})));
+  renderHistory();
+}
+
+
+function buildKPHtml(forPrint=false){
+  const pvDisc = document.getElementById('pv-discount');
+  const disc = pvDisc && pvDisc.value ? parseInt(pvDisc.value)||0 : getDisc();
+  const name=v('c-name'), contact=v('c-contact'), city=v('c-city'), addr=v('c-address'), phone=v('c-phone'), manager=v('c-manager'), note=v('c-note');
+  const segName={restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг',fitness:'фитнес-клуб'}[state.segment];
+  const date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+
+  const metaParts=[];
+  if(name) metaParts.push(`<strong>${name}</strong>`);
+  if(segName) metaParts.push(segName);
+  const loc=[city,addr].filter(Boolean).join(', ');
+  if(loc) metaParts.push(loc);
+
+  const introParts=[];
+  if(contact) introParts.push(contact+', добрый день!');
+  else introParts.push('Добрый день!');
+  if(note) introParts.push(note);
+  else introParts.push('Направляем коммерческое предложение на продукцию Asense.');
+
+  let rows='', total=0;
+
+  const cosmetics = PRODUCTS.filter(p=>state.checked[p.id]&&p.type==='cosmetic');
+  const aromas    = PRODUCTS.filter(p=>state.checked[p.id]&&(p.type==='aroma'||p.type==='mini'));
+  const equips    = EQUIP.filter(e=>state.equip[e.id]);
+
+  if(cosmetics.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Косметика — канистры 5 000 мл</td></tr>`;
+    cosmetics.forEach(p=>{
+      const ap=adjPrice(p.price), q=calcCans(p.norm), s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} кан.</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(aromas.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Ароматизация</td></tr>`;
+    aromas.forEach(p=>{
+      const ap=adjPrice(p.price), q=state.qty[p.id]||1, s=ap*q;
+      total+=s;
+      const aroma = state.productAroma[p.id];
+      const aromaStr = aroma ? ` <span style="font-size:10px;color:#888">(${aroma})</span>` : '';
+      rows+=`<tr><td>${p.name}${aromaStr}</td><td>${q} ${p.type==='mini'?'наб.':'шт.'}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+  if(equips.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Оборудование</td></tr>`;
+    equips.forEach(e=>{
+      const ap=adjPrice(e.price), q=state.qty[e.id]||1, s=ap*q;
+      total+=s;
+      rows+=`<tr><td>${e.name}</td><td>${q} ${e.unit}</td><td>${fmt(ap)}</td><td>${fmt(s)}</td></tr>`;
+    });
+  }
+
+  const customs = state.customItems.filter(c=>c.name);
+  if(customs.length){
+    rows+=`<tr class="kp-sec"><td colspan="4">Дополнительно</td></tr>`;
+    customs.forEach(c=>{
+      const p=c.price||0, q=c.qty||1, s=p*q;
+      total+=s;
+      const isFree = p<=1;
+      rows+=`<tr${isFree?' class="kp-free"':''}><td>${c.name}</td><td>${q} шт.</td><td>${isFree?'—':fmt(p)}</td><td style="${isFree?'color:#2E7D32;font-weight:500':''}">${isFree?'Бесплатно':fmt(s)}</td></tr>`;
+    });
+  }
+
+  rows+=`<tr class="kp-free"><td>Флаконы 300 мл</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Брендирование флаконов (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Помпы для канистр 5 л (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-tot"><td colspan="3">Итого к оплате</td><td>${fmt(total)}</td></tr>`;
+
+  let aromaNote='';
+  const ac=[...state.aromasCos], ad=[...state.aromasDiff,...state.aromasSpa];
+  if(ac.length||ad.length){
+    aromaNote='<div class="kp-aromanote">';
+    if(ac.length) aromaNote+=`<div><strong>Ароматы (косметика):</strong> ${ac.join(' · ')}</div>`;
+    if(ad.length) aromaNote+=`<div><strong>Ароматы (ароматизация):</strong> ${ad.join(' · ')}</div>`;
+    aromaNote+='</div>';
+  }
+
+  const managerLine = manager ? `<div style="margin-top:12px;font-size:11px;color:#999">Менеджер: ${manager}</div>` : '';
+
+  return `<div class="kp-doc" id="kp-printable">
+    <div class="kp-hdr">
+      <div>
+        <div class="kp-brand">As<em>é</em>nse</div>
+        <div class="kp-brand-sub">Производитель премиальной косметики</div>
+        ${metaParts.length ? `<div style="margin-top:8px;font-size:11px;color:#777">${metaParts.join(' · ')}</div>` : ''}
+      </div>
+      <div class="kp-req">
+        <strong>ООО «АСЕНС»</strong><br>
+        143422, МО, г.о. Красногорск<br>
+        ул. Полевая, стр. 35А<br>
+        ИНН 5024230644 ОГРН 1235000029659<br>
+        +7 (495) 970-86-40 · commerce@asense.store
+      </div>
+    </div>
+    <div class="kp-date">${date}</div>
+    <div class="kp-heading">Коммерческое предложение</div>
+    <p class="kp-intro">${introParts.join(' ')}</p>
+    <table class="kp-t">
+      <thead><tr><th>Продукт</th><th>Кол-во</th><th>Цена / ед.</th><th>Сумма</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${aromaNote}
+    ${managerLine}
+    ${footerNote ? `<div style="margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555">${footerNote}</div>` : ''}
+    ${pvConditionVal ? `<div style="margin-top:8px;font-size:11px;color:#555">📌 ${pvConditionVal}</div>` : ''}
+    <div class="kp-foot">
+      ${(function(){var p=getProfile();var mgr='';if(p.name){mgr='<strong>'+p.name+'</strong>'+(p.title?' · '+p.title:'')+(p.phone?' · '+p.phone:'')+(p.tg?' · TG: '+p.tg:'')+'<br>';}return mgr;})()}
+      <strong>ASENSE</strong> · asense.store · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru<br>
+      АО "Тинькофф Банк" БИК 044525974 · р/с 40702810210001338130 · к/с 30101810145250000974
+    </div>
+  </div>`;
+}
+
+
+function printKP(){
+  renderPreview();
+  const kp = document.getElementById('kp-printable');
+  if(!kp) return;
+  const w = window.open('','_blank','width=820,height=1000');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>КП Asense</title>
+  <style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;padding:0}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:720px;margin:0 auto;font-size:12.5px}
+  .kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #ddd}
+  .kp-brand{font-size:26px;font-weight:300;letter-spacing:4px}
+  .kp-brand em{font-style:italic}
+  .kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+  .kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
+  .kp-req strong{color:#1a1a1a}
+  .kp-date{font-size:11px;color:#999}
+  .kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 14px}
+  .kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:16px}
+  table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+  table.kp-t thead tr{background:#1A1A2E}
+  table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+  table.kp-t thead th:not(:first-child){text-align:right}
+  table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+  table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+  table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+  tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+  tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+  tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+  tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+  .kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+  .kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+  .kp-foot strong{color:#1a1a1a}
+  .print-btn{display:block;margin:20px auto;padding:10px 28px;background:#1A1A2E;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer}
+  @media print{.print-btn{display:none}}
+  </style></head><body>
+  ${kp.outerHTML}
+  <button class="print-btn" onclick="window.print()">Печать / Сохранить PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+
+
+function exportExcel(){
+  const disc    = getDisc();
+  const guests  = getGuests();
+  const days    = getDays();
+  const cName   = v('c-name')||'Клиент';
+  const cCity   = v('c-city');
+  const date    = new Date().toLocaleDateString('ru-RU');
+
+  const D='1A1A2E',G='C9A84C',NV='2E4057',CR='F5F2EC',WH='FFFFFF',GR='F9F7F4',GB='E8F5E9',GT='2E7D32',YL='FFFDE7';
+
+  function hdr(v,bg,fg,sz,al){return xlCell(v,{bg:bg||D,fg:fg||WH,bold:true,sz:sz||10,align:al||'left'});}
+  function sub(v){return xlCell(v,{bg:D,fg:'AAAAAA',sz:9});}
+  function sec(v){return xlCell(v,{bg:NV,fg:WH,bold:true,sz:10});}
+  function dat(v,bg,al){return xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:al||'left'});}
+  function num(v,bg,formula){return formula?xlCell(formula,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'}):xlCell(v,{bg:bg||WH,fg:'1a1a1a',sz:10,align:'right'});}
+  function tot(v,gold){return xlCell(v,{bg:D,fg:gold?G:WH,bold:true,sz:gold?12:10,align:gold?'right':'left'});}
+  function free(v){return xlCell(v,{bg:GB,fg:GT,sz:10});}
+  function inp(v){return xlCell(v,{bg:YL,fg:'0000AA',bold:true,sz:11,align:'center'});}
+  function empty(bg){return xlCell('',{bg:bg||WH});}
+
+  const cosm = PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='cosmetic';});
+  const selProds = PRODUCTS.filter(function(p){return state.checked[p.id];});
+  const selEquip = EQUIP.filter(function(e){return state.equip[e.id];});
+
+  // ============================================================
+  // ЛИСТ 1 — КП (продукты + цены + формулы)
+  // ============================================================
+  var r1 = [];
+  var m1 = [];
+  var totalRow;
+
+  const clientMeta = [cName,cCity].filter(Boolean).join('  ·  ');
+  r1.push([hdr('ASENSE — Коммерческое предложение',D,G,14,'center'),null,null,null,null]);
+  r1.push([sub(clientMeta||'ООО «АСЕНС»'),null,null,null,sub(date)]);
+  r1.push([null,null,null,null,null]);
+  r1.push([hdr('Продукт',NV),hdr('Объём',NV,WH,10,'center'),hdr('Кол-во',NV,WH,10,'center'),hdr('Цена / ед., ₽',NV,G,10,'center'),hdr('Сумма, ₽',NV,G,10,'right')]);
+  m1.push({s:{r:0,c:0},e:{r:0,c:4}});
+  m1.push({s:{r:1,c:0},e:{r:1,c:3}});
+
+  var dataStartRow = 4;
+
+  function addSec1(label, items, isEquip){
+    if(!items.length) return;
+    r1.push([sec(label),sec(''),sec(''),sec(''),sec('')]);
+    items.forEach(function(p,i){
+      const ap = Math.round(p.price*(1-disc/100));
+      const q  = isEquip?(state.qty[p.id]||1):(p.norm>0?calcCans(p.norm):(state.qty[p.id]||1));
+      const ri = r1.length;
+      const bg = i%2===0?CR:WH;
+      const aroma = state.productAroma[p.id];
+      const nm = p.name+(aroma?' ('+aroma+')':'');
+      const vol = p.vol||p.sub||'';
+      // C=qty(col3), D=price(col4), E=formula sum
+      r1.push([dat(nm,bg),dat(vol,bg,'center'),inp(q),inp(ap),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
+    });
+  }
+
+  addSec1('Косметика — канистры 5 000 мл', cosm, false);
+  addSec1('Ароматизация', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='aroma';}), false);
+  addSec1('Миниатюры / Наборы', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='mini';}), false);
+  addSec1('Флаконы 300 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle300';}), false);
+  addSec1('Флаконы 500 мл', PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type==='bottle500';}), false);
+  addSec1('Оборудование', selEquip, true);
+
+  const customs = state.customItems.filter(function(c){return c.name;});
+  if(customs.length){
+    r1.push([sec('Дополнительно'),sec(''),sec(''),sec(''),sec('')]);
+    customs.forEach(function(c,i){
+      const ri=r1.length;
+      const bg=i%2===0?CR:WH;
+      if((c.price||0)<=1){
+        r1.push([free(c.name),free(''),free(c.qty||1),free('Бесплатно'),free('Бесплатно')]);
+      } else {
+        r1.push([dat(c.name,bg),dat('',bg,'center'),inp(c.qty||1),inp(c.price||0),xlCell('=C'+(ri+1)+'*D'+(ri+1),{bg:bg,fg:'1a1a1a',sz:10,align:'right'})]);
+      }
+    });
+  }
+
+  r1.push([free('Флаконы 300 мл (первые 4 шт., от 30 000 ₽)'),free('4 шт.'),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Брендирование флаконов (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Помпы для канистр 5 л (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+
+  // Total row with SUM formula
+  const totRowIdx = r1.length+1;
+  const sumFormula = '=SUM(E'+dataStartRow+':E'+(r1.length)+')';
+  r1.push([tot(''),tot(''),tot(''),tot('ИТОГО К ОПЛАТЕ'),tot(sumFormula,true)]);
+  r1.push([null,null,null,null,null]);
+  r1.push([xlCell('🟡 Жёлтые ячейки можно редактировать — кол-во и цены пересчитаются автоматически',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null]);
+  r1.push([xlCell('🚚 Доставка до терминалов СДЭК и ТК КИТ — бесплатно',{bg:GR,fg:'666666',sz:9}),null,null,null,null]);
+  r1.push([xlCell('ASENSE · commerce@asense.store · +7 (495) 970-86-40 · sales@asense.ru',{bg:GR,fg:'888888',sz:9}),null,null,null,null]);
+
+  const lastRow = r1.length;
+  m1.push({s:{r:lastRow-3,c:0},e:{r:lastRow-3,c:4}});
+  m1.push({s:{r:lastRow-2,c:0},e:{r:lastRow-2,c:4}});
+  m1.push({s:{r:lastRow-1,c:0},e:{r:lastRow-1,c:4}});
+
+  const ws1 = buildSheet(r1, m1, [{wch:40},{wch:12},{wch:10},{wch:14},{wch:14}], [{hpt:28},{hpt:14}]);
+
+  // ============================================================
+  // ЛИСТ 2 — Расчёт расхода (занятость + фитнес)
+  // ============================================================
+  var r2 = [];
+  var m2 = [];
+
+  const scenarios = [{n:'50%',m:0.5},{n:'70%',m:0.7},{n:'100%',m:1.0}];
+
+  r2.push([hdr('ASENSE — Расчёт расхода косметики по зонам',D,G,13),null,null,null,null,null,null,null,null,null]);
+  r2.push([sub([cName,'Гостей/день: '+guests,'Рабочих дней: '+days].filter(Boolean).join('  ·  ')),null,null,null,null,null,null,null,null,null]);
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:0,c:0},e:{r:0,c:9}});
+  m2.push({s:{r:1,c:0},e:{r:1,c:9}});
+
+  // Params block (yellow — editable)
+  r2.push([hdr('Параметры (редактировать)',NV),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:3,c:0},e:{r:3,c:9}});
+
+  r2.push([dat('Гостей в день (номерной фонд)'),null,inp(guests),null,dat('Рабочих дней в месяц'),null,inp(days),null,null,null]);
+  r2.push([dat('Гостей в день (фитнес/спа)'),null,inp(Math.round(guests*0.3)),null,dat('Скидка %'),null,inp(disc),null,null,null]);
+
+  const GR_ROW = 4; // row index of guests (1-based = 5, 0-based = 4)
+  const FIT_ROW = 5;
+  const DAYS_COL = 'G'; // col index
+  const DISC_COL = 'G';
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // --- ЗОНА 1: НОМЕРНОЙ ФОНД ---
+  r2.push([hdr('ЗОНА 1 — Номерной фонд / Стандартные номера',NV,WH,11),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const hdrRow2 = [dat('Продукт',NV.replace('2E4057','F0F4F8')),dat('Норма мл/гость',NV.replace('2E4057','F0F4F8'),'center')];
+  scenarios.forEach(function(s){
+    hdrRow2.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
+    hdrRow2.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
+  });
+  hdrRow2.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
+  r2.push(hdrRow2);
+
+  cosm.forEach(function(p,pi){
+    const ap = Math.round(p.price*(1-disc/100));
+    const bg = pi%2===0?CR:WH;
+    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
+    const ri = r2.length+1;
+    scenarios.forEach(function(sc,si){
+      // Formula: =MAX(1,ROUNDUP(C5*G5*norm/5000,0)) where C5=guests, G5=days
+      const gRef = 'C5'; const dRef = 'G5';
+      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
+      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
+      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
+      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
+    });
+    // В год = sum at 100% * 12
+    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
+    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
+    r2.push(row);
+  });
+
+  // Subtotal hotel
+  const htStart = 9; // approx
+  const htEnd = r2.length;
+  r2.push([
+    tot('ИТОГО номерной фонд'),tot(''),
+    xlCell('=SUM(C'+htStart+':C'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(D'+htStart+':D'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(E'+htStart+':E'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(F'+htStart+':F'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(G'+htStart+':G'+htEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(H'+htStart+':H'+htEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    tot(''),
+    xlCell('=SUM(J'+htStart+':J'+htEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // --- ЗОНА 2: ФИТНЕС / СПА ---
+  r2.push([hdr('ЗОНА 2 — Фитнес / СПА',NV,WH,11),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const hdrRow3 = [dat('Продукт'),dat('Норма мл/гость','','center')];
+  scenarios.forEach(function(s){
+    hdrRow3.push(xlCell('Канистр ('+s.n+')',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}));
+    hdrRow3.push(xlCell('Сумма ('+s.n+')',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}));
+  });
+  hdrRow3.push(xlCell('В год (100%)',{bg:NV,fg:G,bold:true,sz:10,align:'right'}));
+  r2.push(hdrRow3);
+
+  cosm.forEach(function(p,pi){
+    const ap = Math.round(p.price*(1-disc/100));
+    const bg = pi%2===0?'EDE9FE':WH;
+    const row = [dat(p.name,bg),dat(p.norm+' мл',bg,'center')];
+    const ri = r2.length+1;
+    scenarios.forEach(function(sc,si){
+      const gRef = 'C6'; // fitness guests row
+      const dRef = 'G5';
+      const cansF = '=MAX(1,ROUNDUP('+gRef+'*'+dRef+'*'+p.norm+'*'+sc.m+'/5000,0))';
+      const sumF  = '='+XLSX.utils.encode_cell({r:ri-1,c:2+si*2})+'*'+ap;
+      row.push(xlCell(cansF,{bg:bg,fg:'1a1a1a',sz:10,align:'center'}));
+      row.push(xlCell(sumF, {bg:bg,fg:'1a1a1a',sz:10,align:'right'}));
+    });
+    const yearF = '='+XLSX.utils.encode_cell({r:ri-1,c:8})+'*12';
+    row.push(xlCell(yearF,{bg:bg,fg:G,bold:true,sz:10,align:'right'}));
+    r2.push(row);
+  });
+
+  const fitStart = htEnd+4;
+  const fitEnd = r2.length;
+  r2.push([
+    tot('ИТОГО фитнес/спа'),tot(''),
+    xlCell('=SUM(C'+fitStart+':C'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(D'+fitStart+':D'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(E'+fitStart+':E'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(F'+fitStart+':F'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    xlCell('=SUM(G'+fitStart+':G'+fitEnd+')',{bg:D,fg:WH,bold:true,sz:10,align:'center'}),
+    xlCell('=SUM(H'+fitStart+':H'+fitEnd+')',{bg:D,fg:G,bold:true,sz:10,align:'right'}),
+    tot(''),
+    xlCell('=SUM(J'+fitStart+':J'+fitEnd+')',{bg:D,fg:G,bold:true,sz:11,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+
+  // Grand total
+  r2.push([
+    tot('ИТОГО ПО ВСЕМ ЗОНАМ'),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),tot(''),
+    xlCell('=J'+(htEnd+1)+'+J'+(fitEnd+1),{bg:D,fg:G,bold:true,sz:13,align:'right'}),
+  ]);
+
+  r2.push([null,null,null,null,null,null,null,null,null,null]);
+  r2.push([xlCell('🟡 Измените гостей/день и скидку в строках 5-6 — все расчёты пересчитаются',{bg:YL,fg:'555500',sz:9,wrap:true}),null,null,null,null,null,null,null,null,null]);
+  m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:9}});
+
+  const ws2 = buildSheet(r2, m2,
+    [{wch:36},{wch:14},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:13},{wch:11},{wch:14}],
+    [{hpt:24},{hpt:13}]
+  );
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, 'КП');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт расхода');
+  XLSX.writeFile(wb, 'КП_Asense_'+cName.replace(/\s/g,'_')+'.xlsx');
+}
+
+
+
+function recalc(){ renderProducts(); }
+
+
+function exportBackupExcel(){
+  const saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  const prices = JSON.parse(localStorage.getItem('asense_prices')||'{}');
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: КП
+  const rows1 = [['ID','Название','Сегмент','Дата','Итого','Город','Контакт','Менеджер']];
+  saves.forEach(s=>{
+    rows1.push([s.id, s.name, s.segment, s.date, s.total||'', s.inputs?.city||'', s.inputs?.contact||'', s.inputs?.manager||'']);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(rows1);
+  ws1['!cols']=[{wch:14},{wch:28},{wch:12},{wch:12},{wch:14},{wch:20},{wch:20},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'История КП');
+
+  // Sheet 2: Цены
+  const rows2 = [['ID продукта','Название','Цена базовая ₽','Цена текущая ₽']];
+  [...PRODUCTS,...EQUIP].forEach(p=>{
+    const base = BASE_PRICES[p.id];
+    const cur = prices[p.id] ?? base;
+    if(cur !== base) rows2.push([p.id, p.name, base, cur]);
+  });
+  if(rows2.length===1) rows2.push(['—','Все цены базовые','','']);
+  const ws2 = XLSX.utils.aoa_to_sheet(rows2);
+  ws2['!cols']=[{wch:16},{wch:36},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Изменённые цены');
+
+  XLSX.writeFile(wb, 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.xlsx');
+}
+
+
+function exportBackupJSON(){
+  const data = {
+    version: 1,
+    exported: new Date().toISOString(),
+    kp: JSON.parse(localStorage.getItem('asense_kp')||'[]'),
+    prices: JSON.parse(localStorage.getItem('asense_prices')||'{}'),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'asense_backup_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.json';
+  a.click();
+}
+
+
+
+function loadSave(id){
+  var saves=JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  var s=saves.find(function(x){return x.id===id;});
+  if(!s||!s.state) return;
+  Object.assign(state, s.state);
+  if(s.inputs){
+    var map={name:'c-name',contact:'c-contact',city:'c-city',addr:'c-address',phone:'c-phone',manager:'c-manager',note:'c-note'};
+    Object.entries(map).forEach(function(e){var el=document.getElementById(e[1]);if(el&&s.inputs[e[0]]!==undefined)el.value=s.inputs[e[0]]||'';});
+    if(s.inputs.guests)document.getElementById('p-guests').value=s.inputs.guests;
+    if(s.inputs.days)document.getElementById('p-days').value=s.inputs.days;
+    if(s.inputs.disc)document.getElementById('p-disc').value=s.inputs.disc;
+  }
+  if(s.segment){
+    state.segment=s.segment;
+    var segMap={restaurant:0,hotel:1,spa:2,glamping:3,fitness:4};
+    document.querySelectorAll('.seg-btn').forEach(function(b,i){b.classList.toggle('active',i===segMap[s.segment]);});
+    var lbl=document.getElementById('lbl-seats');
+    if(lbl)lbl.textContent=SEG_LABELS[s.segment]||'Посадочных мест';
+  }
+  renderProducts();recalc();go('client');
+}
+
 
 applyCustomPrices();
 loadProfile();
