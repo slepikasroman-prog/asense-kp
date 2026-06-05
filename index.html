@@ -22,7 +22,7 @@
 body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;background:var(--bg);color:var(--text);min-height:100vh}
 
 /* LOGIN SCREEN */
-#login-screen{position:fixed;inset:0;z-index:9999;background:var(--dark);display:flex;align-items:center;justify-content:center;padding:20px}
+#login-screen{position:fixed;inset:0;z-index:9999;background:var(--dark);display:none;align-items:center;justify-content:center;padding:20px}
 .login-box{background:rgba(255,255,255,0.97);border-radius:20px;padding:44px 40px;width:360px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.4);backdrop-filter:blur(20px);animation:loginIn .6s cubic-bezier(.16,1,.3,1) forwards;opacity:0;transform:translateY(20px)}
 @keyframes loginIn{to{opacity:1;transform:translateY(0)}}
 .login-box input{transition:border-color .2s,box-shadow .2s}
@@ -828,7 +828,8 @@ function doUserLogin(){
   // Save name to profile
   var p = JSON.parse(localStorage.getItem('asense_profile')||'{}');
   if(!p.name){ p.name=name; localStorage.setItem('asense_profile', JSON.stringify(p)); }
-  document.getElementById('login-screen').style.display='none';
+  var ls = document.getElementById('login-screen');
+  if(ls){ ls.style.display='none'; ls.style.zIndex='-1'; }
   var mf=document.getElementById('c-manager');
   if(mf&&!mf.value) mf.value=name;
   // Save to Supabase by name as key, load cloud data
