@@ -730,6 +730,39 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 
 <script>
 // ===== SUPABASE =====
+
+function renderPrices(){
+  function priceRow(p){
+    var base = BASE_PRICES[p.id];
+    var cur = getPrice(p.id);
+    var changed = cur !== base;
+    return '<div style="display:grid;grid-template-columns:1fr 150px 110px;align-items:center;gap:10px;padding:8px 12px;border:1px solid '+(changed?'var(--gold)':'var(--border)')+';border-radius:8px;background:'+(changed?'rgba(201,168,76,0.05)':'var(--surface)')+';margin-bottom:5px">'
+      +'<div><div style="font-size:13px">'+p.name+'</div><div style="font-size:11px;color:var(--muted)">'+(p.sub||p.unit||'')+' · базовая: <b>'+fmt(base)+'</b></div></div>'
+      +'<div style="display:flex;align-items:center;gap:5px"><input type="number" id="pr-'+p.id+'" value="'+cur+'" min="0" step="50" style="width:100%;padding:6px 8px;border:1px solid '+(changed?'var(--gold)':'var(--border)')+';border-radius:6px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit" oninput="livePrice(\''+p.id+'\',this.value)"><span style="font-size:11px;color:var(--muted)">₽</span></div>'
+      +'<div style="font-size:11px;color:'+(changed?'var(--gold)':'var(--muted)')+'">'+(changed?'✦ изменена<br><span style="cursor:pointer;text-decoration:underline;font-size:10px" onclick="resetOne(\''+p.id+'\')">сбросить</span>':'базовая')+'</div></div>';
+  }
+  function setList(id, items){ var el=document.getElementById(id); if(el) el.innerHTML=items.map(priceRow).join(''); }
+  setList('price-list-cosmetic', PRODUCTS.filter(function(p){return p.type==='cosmetic';}));
+  setList('price-list-aroma',    PRODUCTS.filter(function(p){return p.type==='aroma';}));
+  setList('price-list-mini',     PRODUCTS.filter(function(p){return p.type==='mini';}));
+  setList('price-list-b300',     PRODUCTS.filter(function(p){return p.type==='bottle300';}));
+  setList('price-list-b500',     PRODUCTS.filter(function(p){return p.type==='bottle500';}));
+  setList('price-list-equip',    EQUIP);
+}
+function resetOne(id){
+  delete customPrices[id];
+  PRODUCTS.concat(EQUIP).forEach(function(p){ if(p.id===id) p.price=BASE_PRICES[id]; });
+  localStorage.setItem('asense_prices', JSON.stringify(customPrices));
+  renderPrices(); recalc();
+}
+function resetPrices2(){
+  if(!confirm('Сбросить все цены к базовым?')) return;
+  customPrices = {};
+  localStorage.removeItem('asense_prices');
+  PRODUCTS.concat(EQUIP).forEach(function(p){ p.price=BASE_PRICES[p.id]; });
+  renderPrices(); recalc();
+}
+
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -1034,29 +1067,8 @@ function renderProducts(){
   function renderList(id, items, isEquip){
     const el = document.getElementById(id);
     if(!el) return;
-    // Sales summary
-  var salesEl = document.getElementById('dash-sales-block');
-  if(salesEl && actualSum || salesPlan){
-    var pct = salesPlan ? Math.min(100,Math.round(actualSum/salesPlan*100)) : 0;
-    var color = pct>=100?'#4CAF50':pct>=70?'#FF9800':'#2196F3';
-    salesEl.innerHTML = '<div style="padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:4px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
-      +'<span style="font-size:13px;font-weight:500">Фактические продажи — '+months[now.getMonth()]+' '+now.getFullYear()+'</span>'
-      +"<button class='btn btn-sm' onclick='goToSales()'>Подробнее →</button>"
-      +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:'+(salesPlan?'12':'0')+'px">'
-      +'<div><div style="font-size:11px;color:var(--muted)">Сделок</div><div style="font-size:20px;font-weight:500">'+thisSales.length+'</div></div>'
-      +'<div><div style="font-size:11px;color:var(--muted)">Сумма</div><div style="font-size:18px;font-weight:500;color:var(--gold)">'+(actualSum?actualSum.toLocaleString('ru-RU')+' ₽':'—')+'</div></div>'
-      +'<div><div style="font-size:11px;color:var(--muted)">Средний чек</div><div style="font-size:18px;font-weight:500">'+(thisSales.length?Math.round(actualSum/thisSales.length).toLocaleString('ru-RU')+' ₽':'—')+'</div></div>'
-      +'</div>'
-      +(salesPlan?'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">План: <strong style="color:'+color+'">'+pct+'%</strong> ('+actualSum.toLocaleString('ru-RU')+' из '+salesPlan.toLocaleString('ru-RU')+')</div>'
-        +'<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px"></div></div>':'')
-      +'</div>';
-  } else if(salesEl){ salesEl.innerHTML=''; }
-
-  var months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  el.innerHTML = items.map(function(p){ return makeRow(p, isEquip); }).join('');
-  }
+    el.innerHTML = items.map(function(p){ return makeRow(p, isEquip); }).join('');
+}
 
   renderList('list-cosmetic',  PRODUCTS.filter(function(p){return p.type==='cosmetic';}),   false);
   renderList('list-aroma',     PRODUCTS.filter(function(p){return p.type==='aroma';}),     false);
