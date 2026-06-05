@@ -939,6 +939,15 @@ const AROMAS_DIFF = ['Pure Cannabis','Oud Wealth','Warm Cinnamon Bun','Tobacco L
 const AROMAS_SPA  = ['White Lotus (SPA edition)','Hamam Lover (SPA edition)','Meditation Session (SPA edition)'];
 const SEG_LABELS  = {restaurant:'Посадочных мест',hotel:'Номеров',spa:'Гостей/день',glamping:'Лоджей / домиков',fitness:'Посетителей/день'};
 const SEG_GUESTS  = {restaurant:80,hotel:40,spa:30,glamping:15,fitness:60};
+
+const SEG_NORMS = {
+  restaurant: {soap:3, lotion:2, gel:3, shampoo:0, cond:0, scrub:0},
+  hotel:      {soap:18, lotion:10, gel:18, shampoo:11, cond:7, scrub:0},
+  spa:        {soap:18, lotion:10, gel:18, shampoo:11, cond:7, scrub:10},
+  glamping:   {soap:18, lotion:10, gel:18, shampoo:11, cond:7, scrub:0},
+  fitness:    {soap:10, lotion:0, gel:18, shampoo:11, cond:0, scrub:0},
+};
+function getNorm(id){ var sn=SEG_NORMS[state.segment]; return (sn && sn[id]!==undefined) ? sn[id] : 0; }
 const SECTIONS = ['client','products','aroma','preview','history','prices','custom','retail','dashboard','sales','faq','kb','profile'];
 const TITLES   = {client:'Клиент',products:'Продукты',aroma:'Ароматы',preview:'Предпросмотр КП',history:'История КП',prices:'Прайс — редактор цен',custom:'✏️ Составить КП вручную',retail:'🛍 Ритейл — прайс и КП',dashboard:'📊 Дашборд продаж',sales:'💼 Мои продажи',faq:'FAQ — Частые вопросы',kb:'📚 База знаний отдела продаж',profile:'👤 Профиль менеджера'};
 
@@ -1003,9 +1012,15 @@ function go(id){
 function setSeg(seg, el){
   state.segment = seg;
   document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
+  if(el) el.classList.add('active');
   document.getElementById('lbl-seats').textContent = SEG_LABELS[seg];
   document.getElementById('p-guests').value = SEG_GUESTS[seg];
+  var tpl = KP_TEMPLATES[seg];
+  if(tpl){
+    PRODUCTS.forEach(function(p){ state.checked[p.id] = false; });
+    tpl.products.forEach(function(id){ state.checked[id] = true; });
+    state.qty = {};
+  }
   recalc();
 }
 
@@ -1029,15 +1044,20 @@ function renderProducts(){
     const toggle = isEquip ? "toggleEquip('"+p.id+"',this.checked)" : "toggleProd('"+p.id+"',this.checked)";
 
     let rightCol;
+    var segNorm = getNorm(p.id);
     if(isEquip){
-      rightCol = '<input class="num-in" type="number" min="0" value="'+(state.qty[p.id]||1)+'" oninput="state.qty[\''+p.id+'\']=+this.value;recalc()">';
+      rightCol = '<input class="num-in" type="number" min="0" value="'+(state.qty[p.id]||1)+'" oninput="state.qty[\''+p.id+'\']= +this.value;updateTotals()">';
+    } else if(segNorm > 0){
+      var defCans = state.qty[p.id] || calcCans(segNorm);
+      rightCol = '<input class="num-in" type="number" min="1" value="'+defCans+'" oninput="state.qty[\''+p.id+'\']= +this.value;updateTotals()">';
     } else if(p.norm > 0){
-      rightCol = '<span style="font-weight:500;text-align:right;display:block">'+calcCans(p.norm)+'</span>';
+      var defCans2 = state.qty[p.id] || calcCans(p.norm);
+      rightCol = '<input class="num-in" type="number" min="1" value="'+defCans2+'" oninput="state.qty[\''+p.id+'\']= +this.value;updateTotals()">';
     } else {
-      rightCol = '<input class="num-in" type="number" min="0" value="'+(state.qty[p.id]||1)+'" oninput="state.qty[\''+p.id+'\']=+this.value;recalc()">';
+      rightCol = '<input class="num-in" type="number" min="0" value="'+(state.qty[p.id]||1)+'" oninput="state.qty[\''+p.id+'\']= +this.value;updateTotals()">';
     }
 
-    const aromaList  = AROMA_MAP[p.id];
+const aromaList  = AROMA_MAP[p.id];
     const fixedAroma = FIXED_AROMA[p.id];
     const selAroma   = state.productAroma[p.id]||'';
     let aromaHtml = '';
@@ -1057,7 +1077,7 @@ function renderProducts(){
     return '<div class="prod-row'+(on?' on':'')+'" id="row-'+p.id+'">'
       +'<input type="checkbox"'+(on?' checked':'')+' onchange="'+toggle+'">'
       +'<div><div class="prod-name">'+p.name+'</div><div class="prod-sub">'+(p.vol||p.sub||'')+'</div></div>'
-      +'<div style="text-align:center;color:var(--muted);font-size:12px">'+(p.norm>0?p.norm+' мл':(p.vol||'—'))+'</div>'
+      +'<div style="text-align:center;color:var(--muted);font-size:12px">'+(getNorm(p.id)>0?getNorm(p.id)+' мл':(p.norm>0?p.norm+' мл':(p.vol||'—')))+'</div>'
       +'<div style="text-align:right;color:var(--muted);font-size:12px">'+fmt(ap)+'</div>'
       +'<div>'+rightCol+'</div>'
       +aromaHtml
@@ -1121,7 +1141,7 @@ function updateTotals(){
   PRODUCTS.forEach(p=>{
     if(!state.checked[p.id]) return;
     const ap = adjPrice(p.price);
-    const q = p.norm>0 ? calcCans(p.norm) : (state.qty[p.id]||1);
+    var sn=getNorm(p.id)||p.norm; const q = sn>0 ? (state.qty[p.id]||calcCans(sn)) : (state.qty[p.id]||1);
     if(p.type==='cosmetic') cans+=q;
     sum += ap*q;
   });
