@@ -1174,8 +1174,25 @@ function loadSave(id){
 // Stub functions available immediately for inline onclick handlers
 function hideSplash(){
   var s=document.getElementById('splash');
-  if(s&&s.style.display!=='none'){s.style.opacity='0';setTimeout(function(){s.style.display='none';},500);}
+  if(s&&s.style.display!=='none'){
+    s.style.opacity='0';
+    setTimeout(function(){s.style.display='none';},500);
+  }
 }
+
+// Always auto-hide splash after 1.8s - runs immediately when script loads
+(function(){
+  setTimeout(function(){
+    hideSplash();
+    // Also check auth after splash
+    if(typeof checkAuthAndInit === 'function') checkAuthAndInit();
+  }, 1800);
+  // Click to skip
+  document.addEventListener('DOMContentLoaded', function(){
+    var sp = document.getElementById('splash');
+    if(sp) sp.addEventListener('click', hideSplash);
+  });
+})();
 function loadProfile(){
   try{
     var p=JSON.parse(localStorage.getItem('asense_profile')||'{}');
@@ -3251,7 +3268,6 @@ applyCustomPrices();
 loadProfile();
 renderProducts();
 setTimeout(loadFromCloud, 1000);
-checkAuthAndInit();
 var _u=localStorage.getItem('asense_user');
 var _sideUser=document.getElementById('sidebar-user');
 if(_sideUser&&_u) _sideUser.textContent='👤 '+_u;
