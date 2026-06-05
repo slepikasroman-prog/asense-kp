@@ -791,8 +791,12 @@ async function aiParseClient(){
 
   var result = await groqAsk(prompt);
   try {
-    var clean = result.replace(/\`\`\`json|\`\`\`/g,'').trim();
-    var data = JSON.parse(clean);
+    // Extract JSON from response — try multiple strategies
+    var clean = result.replace(/```json|```/g,'').trim();
+    // Find JSON object in response
+    var jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('no json');
+    var data = JSON.parse(jsonMatch[0]);
     if(data.name) document.getElementById('c-name').value = data.name;
     if(data.contact) document.getElementById('c-contact').value = data.contact;
     if(data.city) document.getElementById('c-city').value = data.city;
@@ -801,15 +805,41 @@ async function aiParseClient(){
     if(data.guests && data.guests > 0) document.getElementById('p-guests').value = data.guests;
     if(data.segment){
       var segMap = {restaurant:0,hotel:1,spa:2,glamping:3,fitness:4};
-      var idx = segMap[data.segment];
-      var btns = document.querySelectorAll('.seg-btn');
-      if(btns[idx]){ btns[idx].click(); }
+      var sidx = segMap[data.segment];
+      var sbtns = document.querySelectorAll('.seg-btn');
+      if(sbtns[sidx]) sbtns[sidx].click();
     }
     input.value = '';
     document.getElementById('ai-client-block').style.display = 'none';
     recalc();
+    // Flash success
+    btn.textContent = '✅ Готово!';
+    btn.style.background = '#2E7D32';
+    setTimeout(function(){ btn.textContent = '✅ Заполнить'; btn.style.background = ''; btn.disabled = false; }, 2000);
+    return;
   } catch(e){
-    alert('Не удалось разобрать ответ. Попробуй ещё раз.');
+    // Fallback: try to extract fields by regex
+    var fields = {
+      name: result.match(/"name"\s*:\s*"([^"]+)"/)?.[1] || '',
+      contact: result.match(/"contact"\s*:\s*"([^"]+)"/)?.[1] || '',
+      city: result.match(/"city"\s*:\s*"([^"]+)"/)?.[1] || '',
+      segment: result.match(/"segment"\s*:\s*"([^"]+)"/)?.[1] || '',
+      guests: parseInt(result.match(/"guests"\s*:\s*(\d+)/)?.[1]) || 0,
+      note: result.match(/"note"\s*:\s*"([^"]+)"/)?.[1] || ''
+    };
+    if(fields.name || fields.city){
+      if(fields.name) document.getElementById('c-name').value = fields.name;
+      if(fields.contact) document.getElementById('c-contact').value = fields.contact;
+      if(fields.city) document.getElementById('c-city').value = fields.city;
+      if(fields.note) document.getElementById('c-note').value = fields.note;
+      if(fields.guests > 0) document.getElementById('p-guests').value = fields.guests;
+      if(fields.segment){ var sm={restaurant:0,hotel:1,spa:2,glamping:3,fitness:4}; var bi=sm[fields.segment]; var bs=document.querySelectorAll('.seg-btn'); if(bs[bi])bs[bi].click(); }
+      input.value = '';
+      document.getElementById('ai-client-block').style.display = 'none';
+      recalc();
+    } else {
+      alert('ИИ не смог разобрать описание. Попробуй написать подробнее: название, город, тип объекта.');
+    }
   }
   btn.textContent = '✅ Заполнить';
   btn.disabled = false;
