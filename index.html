@@ -953,7 +953,7 @@ const TITLES   = {client:'Клиент',products:'Продукты',aroma:'Ар�
 
 let state = {
   segment:'restaurant',
-  checked:{soap:true,gel:true,shampoo:true,lotion:false,cond:false,scrub:false,ref1:false,dif125:false,machine:false,pfm50:false,pfm250:false,pfm500:false,pfm1000:false,spray50:false,mini_soap:false,mini_lotion:false,mini_shampoo:false,mini_cond:false,mini_gel:false,mini_scrub:false,travelkit:false,giftbag:false,soap300:false,lotion300:false,shamp300:false,cond300:false,gel300:false,soap500:false,lotion500:false,shamp500:false,cond500:false,gel500:false},
+  checked:{soap:true,gel:false,shampoo:false,lotion:true,cond:false,scrub:false,ref1:false,dif125:false,machine:false,pfm50:false,pfm250:false,pfm500:false,pfm1000:false,spray50:false,mini_soap:false,mini_lotion:false,mini_shampoo:false,mini_cond:false,mini_gel:false,mini_scrub:false,travelkit:false,giftbag:false,soap300:false,lotion300:false,shamp300:false,cond300:false,gel300:false,soap500:false,lotion500:false,shamp500:false,cond500:false,gel500:false},
   equip:{},
   qty:{},
   aromasCos:new Set(['Pure Cannabis']),
@@ -2600,7 +2600,7 @@ function downloadVCard(){
 const KP_TEMPLATES = {
   restaurant: {
     name:'Ресторан (стандарт)', guests:60, days:26,
-    products:['soap','gel'],
+    products:['soap','lotion'],
     note:'Направляем коммерческое предложение на косметику для ресторана.'
   },
   hotel: {
