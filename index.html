@@ -328,7 +328,17 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 
 <!-- CLIENT -->
 <div id="sec-client">
-  <div class="sec-title">Сегмент</div>
+  <div style="margin-bottom:14px">
+  <button class="btn btn-dark" style="width:100%;justify-content:center;gap:8px;padding:11px" onclick="document.getElementById('ai-client-block').style.display=document.getElementById('ai-client-block').style.display==='none'?'block':'none'">
+    🎙 Заполнить карточку из описания
+  </button>
+  <div id="ai-client-block" style="display:none;margin-top:8px;padding:12px;background:var(--surface);border:1px solid var(--gold);border-radius:10px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Опишите клиента свободным текстом — ИИ заполнит поля автоматически</div>
+    <textarea id="ai-client-input" placeholder="Например: ресторан Рыба Моя, Москва, контакт Андрей, 60 посадочных мест, интересует мыло и лосьон" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit;resize:vertical;min-height:70px;outline:none"></textarea>
+    <button id="ai-parse-btn" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:8px" onclick="aiParseClient()">✅ Заполнить</button>
+  </div>
+</div>
+<div class="sec-title">Сегмент</div>
   <div class="seg-tabs">
     <button class="seg-btn active" onclick="setSeg('restaurant',this)">🍽 Ресторан</button>
     <button class="seg-btn" onclick="setSeg('hotel',this)">🏨 Отель</button>
@@ -352,7 +362,7 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
     <div class="fg"><label>Адрес</label><input id="c-address" type="text" placeholder="наб. Фонтанки, 59" oninput="recalc()"></div>
     <div class="fg"><label>Телефон / email</label><input id="c-phone" type="text" placeholder="+7 900 000 00 00" oninput="recalc()"></div>
     <div class="fg"><label>Менеджер Asense</label><input id="c-manager" type="text" placeholder="Вика, Анфиса..." oninput="recalc()"></div>
-    <div class="fg" style="grid-column:1/-1"><label style="display:flex;align-items:center">Вводная фраза в КП<i class="tip" data-tip="Отображается в начале КП вместо стандартного текста. Если пусто — используется фраза по умолчанию">?</i></label><input id="c-note" type="text" placeholder="Как и договорились, направляю предложение..." oninput="recalc()"></div>
+    <div class="fg" style="grid-column:1/-1"><label style="display:flex;align-items:center">Вводная фраза в КП<i class="tip" data-tip="Отображается в начале КП. Если пусто — стандартный текст">?</i> <button id="ai-note-btn" onclick="aiGenerateNote()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px;color:var(--gold)">✨</button></label><input id="c-note" type="text" placeholder="Как и договорились, направляю предложение..." oninput="recalc()"></div>
   </div>
   <div class="sec-title">Параметры объекта</div>
   <div class="params-row">
@@ -416,7 +426,11 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
     <div class="tc"><div class="tc-label">Сумма / месяц</div><div class="tc-val" id="total-sum">—</div></div>
     <div class="tc gold"><div class="tc-label">В год</div><div class="tc-val" id="total-year">—</div></div>
   </div>
-  <button class="btn btn-gold" onclick="go('preview')">👁 Предпросмотр КП</button>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+<button class="btn btn-gold" onclick="go('preview')">👁 Предпросмотр КП</button>
+<button id="ai-suggest-btn" class="btn btn-dark" onclick="aiSuggestProducts()">💡 Что добавить?</button>
+</div>
+<div id="ai-suggest-out" style="display:none;margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--gold);border-radius:10px"></div>
 </div>
 
 <!-- AROMA -->
@@ -739,6 +753,123 @@ function renderPrices(){
   setList('price-list-equip',    EQUIP);
 }
 
+
+async function groqAsk(prompt, onChunk){
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+GROQ_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({model:GROQ_MODEL, messages:[{role:'user',content:prompt}], max_tokens:600, temperature:0.7})
+    });
+    const d = await r.json();
+    return d.choices?.[0]?.message?.content || '';
+  } catch(e){ return ''; }
+}
+
+// 1. ЗАПОЛНИТЬ КАРТОЧКУ ИЗ ОПИСАНИЯ
+async function aiParseClient(){
+  var input = document.getElementById('ai-client-input');
+  var btn = document.getElementById('ai-parse-btn');
+  var text = input ? input.value.trim() : '';
+  if(!text){ alert('Опишите клиента'); return; }
+  btn.textContent = '⏳ Думаю...';
+  btn.disabled = true;
+
+  var prompt = `Ты помощник менеджера по продажам B2B косметики ASENSE (Россия).
+Извлеки из описания клиента следующие поля и верни ТОЛЬКО JSON без markdown:
+{
+  "name": "название объекта",
+  "contact": "имя контакта",
+  "city": "город",
+  "phone": "телефон или email",
+  "segment": "restaurant|hotel|spa|glamping|fitness",
+  "guests": число гостей в день,
+  "note": "вводная фраза для КП — деловая, без воды"
+}
+Если поле не упомянуто — пустая строка или 0.
+Описание клиента: "${text}"`;
+
+  var result = await groqAsk(prompt);
+  try {
+    var clean = result.replace(/\`\`\`json|\`\`\`/g,'').trim();
+    var data = JSON.parse(clean);
+    if(data.name) document.getElementById('c-name').value = data.name;
+    if(data.contact) document.getElementById('c-contact').value = data.contact;
+    if(data.city) document.getElementById('c-city').value = data.city;
+    if(data.phone) document.getElementById('c-phone').value = data.phone;
+    if(data.note) document.getElementById('c-note').value = data.note;
+    if(data.guests && data.guests > 0) document.getElementById('p-guests').value = data.guests;
+    if(data.segment){
+      var segMap = {restaurant:0,hotel:1,spa:2,glamping:3,fitness:4};
+      var idx = segMap[data.segment];
+      var btns = document.querySelectorAll('.seg-btn');
+      if(btns[idx]){ btns[idx].click(); }
+    }
+    input.value = '';
+    document.getElementById('ai-client-block').style.display = 'none';
+    recalc();
+  } catch(e){
+    alert('Не удалось разобрать ответ. Попробуй ещё раз.');
+  }
+  btn.textContent = '✅ Заполнить';
+  btn.disabled = false;
+}
+
+// 2. ГЕНЕРАЦИЯ ВВОДНОЙ ФРАЗЫ
+async function aiGenerateNote(){
+  var btn = document.getElementById('ai-note-btn');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  var name = document.getElementById('c-name').value || '';
+  var city = document.getElementById('c-city').value || '';
+  var contact = document.getElementById('c-contact').value || '';
+  var segNames = {restaurant:'ресторан',hotel:'отель',spa:'спа-комплекс',glamping:'глэмпинг',fitness:'фитнес-клуб'};
+  var seg = segNames[state.segment] || '';
+
+  var prompt = `Напиши короткую вводную фразу для коммерческого предложения на поставку премиальной косметики и ароматики ASENSE.
+Клиент: ${name||'объект'}, ${seg}, ${city}.${contact?' Контакт: '+contact+'.':''}
+Требования: деловой тон, 1-2 предложения, без воды, без "Уважаемый", без клише типа "рады предложить". 
+Пиши от лица менеджера напрямую клиенту. Только текст, без кавычек.`;
+
+  var result = await groqAsk(prompt);
+  if(result){
+    document.getElementById('c-note').value = result.trim();
+    recalc();
+  }
+  btn.textContent = '✨';
+  btn.disabled = false;
+}
+
+// 3. ЧТО ЕЩЁ ПРЕДЛОЖИТЬ
+async function aiSuggestProducts(){
+  var btn = document.getElementById('ai-suggest-btn');
+  var out = document.getElementById('ai-suggest-out');
+  btn.textContent = '⏳ Думаю...';
+  btn.disabled = true;
+  out.style.display = 'none';
+
+  var selected = PRODUCTS.filter(function(p){return state.checked[p.id];}).map(function(p){return p.name;});
+  var segNames = {restaurant:'ресторан',hotel:'отель',spa:'спа',glamping:'глэмпинг',fitness:'фитнес'};
+  var seg = segNames[state.segment] || '';
+  var name = document.getElementById('c-name').value || 'клиент';
+
+  var prompt = `Менеджер ASENSE (премиальная косметика и ароматика для HoReCa) составляет КП для: ${name} (${seg}).
+Уже выбраны продукты: ${selected.join(', ') || 'ничего не выбрано'}.
+Доступные продукты ASENSE: жидкое мыло, лосьон, гель для душа, шампунь, кондиционер, мыло-скраб, аромадиффузоры, аромамашина, миниатюры 30мл, travel kit, флаконы 300мл, кронштейны.
+Предложи 2-3 конкретные позиции которые логично добавить к этому КП и кратко объясни почему (1 строка на каждую). Только список, без вступления.`;
+
+  var result = await groqAsk(prompt);
+  if(result){
+    out.innerHTML = '<div style="font-size:12px;font-weight:500;color:var(--gold);margin-bottom:6px">💡 ИИ советует добавить:</div>'
+      + result.trim().split('\n').filter(Boolean).map(function(l){
+          return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text)">'+l+'</div>';
+        }).join('');
+    out.style.display = 'block';
+  }
+  btn.textContent = '💡 Что добавить?';
+  btn.disabled = false;
+}
+
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -852,6 +983,9 @@ function doAdminLogin(){
   }
 }
 
+
+const GROQ_KEY = atob('Z3NrX2tURDUwdHZjZm9Mb2lUbDd0dVFiV0dkeWIzRllsMEFNc0ZzZ3o0N2ZXUHllOGc5TXIyOUE=');
+const GROQ_MODEL = 'llama3-8b-8192';
 
 const PRODUCTS = [
   // Канистры 5л
