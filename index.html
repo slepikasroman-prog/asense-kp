@@ -319,6 +319,7 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   <div class="topbar-actions no-print">
     <button class="btn btn-sm" onclick="saveToHistory()">💾 Сохранить</button>
     <button class="btn btn-sm" onclick="copyKPToTelegram()">✈️ TG</button>
+<button class="btn btn-sm" onclick="showAISettings()" title="Настройки ИИ">🤖</button>
     <button class="btn btn-sm" onclick="exportExcel()">📊 Excel</button>
     <button class="btn btn-sm btn-gold" onclick="printKP()">🖨 PDF</button>
   </div>
@@ -755,15 +756,16 @@ function renderPrices(){
 
 
 async function groqAsk(prompt, systemPrompt){
+  if(!getYaKey()||!getYaFolder()){ return '__NO_KEY__'; }
   try {
     var messages = [];
     if(systemPrompt) messages.push({role:'system', text:systemPrompt});
     messages.push({role:'user', text:prompt});
     const r = await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/completion', {
       method:'POST',
-      headers:{'Authorization':'Api-Key '+YA_KEY,'Content-Type':'application/json','x-folder-id':YA_FOLDER},
+      headers:{'Authorization':'Api-Key '+getYaKey(),'Content-Type':'application/json','x-folder-id':getYaFolder()},
       body:JSON.stringify({
-        modelUri:'gpt://'+YA_FOLDER+'/yandexgpt-lite/latest',
+        modelUri:'gpt://'+getYaFolder()+'/yandexgpt-lite/latest',
         completionOptions:{stream:false,temperature:0.3,maxTokens:'600'},
         messages:messages
       })
@@ -790,6 +792,7 @@ async function aiParseClient(){
   var prompt = 'Extract from this client description and return ONLY a JSON object with these fields: name (object name), contact (contact person), city (city), phone (phone/email), segment (one of: restaurant/hotel/spa/glamping/fitness), guests (guests per day as number, 0 if unknown), note (short professional intro phrase in Russian for a commercial proposal). If field not mentioned use empty string or 0. Description: "' + text + '"';
 
   var result = await groqAsk(prompt, sysPrompt);
+  if(result==='__NO_KEY__'){ showAISettings(); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
   if(!result){ alert('ИИ не ответил — попробуй ещё раз'); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
   try {
     // Extract JSON from response — try multiple strategies
@@ -901,6 +904,49 @@ async function aiSuggestProducts(){
   btn.disabled = false;
 }
 
+
+function showAISettings(){
+  var existing = document.getElementById('ai-settings-modal');
+  if(existing){ existing.style.display='flex'; return; }
+  var modal = document.createElement('div');
+  modal.id = 'ai-settings-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px';
+  var savedKey = localStorage.getItem('asense_ya_key') || '';
+  var savedFolder = localStorage.getItem('asense_ya_folder') || '';
+  var html = '<div style="background:var(--surface);border:1px solid var(--gold);border-radius:16px;padding:28px;max-width:420px;width:100%">';
+  html += '<div style="font-size:16px;font-weight:500;color:var(--gold);margin-bottom:6px">⚙️ Настройки ИИ</div>';
+  html += '<div style="font-size:12px;color:var(--muted);margin-bottom:18px">YandexGPT — ключ хранится в браузере</div>';
+  html += '<div class="fg" style="margin-bottom:12px"><label>API-ключ (AQVN...)</label>';
+  html += '<input id="ya-key-input" type="password" placeholder="AQVN..." style="font-family:monospace;font-size:12px"></div>';
+  html += '<div class="fg" style="margin-bottom:20px"><label>Folder ID (b1g...)</label>';
+  html += '<input id="ya-folder-input" type="text" placeholder="b1gt253..." style="font-family:monospace;font-size:12px"></div>';
+  html += '<div style="display:flex;gap:10px">';
+  html += '<button class="btn btn-gold" style="flex:1;justify-content:center" onclick="saveAISettings()">💾 Сохранить</button>';
+  html += '<button class="btn" onclick="closeAISettings()">Закрыть</button>';
+  html += '</div></div>';
+  modal.innerHTML = html;
+  document.body.appendChild(modal);
+  setTimeout(function(){
+    var ki = document.getElementById('ya-key-input');
+    var fi = document.getElementById('ya-folder-input');
+    if(ki) ki.value = savedKey;
+    if(fi) fi.value = savedFolder;
+  }, 50);
+}
+function closeAISettings(){
+  var m = document.getElementById('ai-settings-modal');
+  if(m) m.style.display = 'none';
+}
+
+function saveAISettings(){
+  var key = document.getElementById('ya-key-input').value.trim();
+  var folder = document.getElementById('ya-folder-input').value.trim();
+  if(!key||!folder){ alert('Заполни оба поля'); return; }
+  localStorage.setItem('asense_ya_key', key);
+  localStorage.setItem('asense_ya_folder', folder);
+  document.getElementById('ai-settings-modal').style.display='none';
+  alert('✅ Сохранено! Теперь ИИ доступен.');
+}
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -1015,8 +1061,8 @@ function doAdminLogin(){
 }
 
 
-const YA_KEY = atob('QVFWTjJkNHE2U3dTT2hoUVRPWjJrYkpULU5lbUF4YUFfdVp1ZG02Zw==');
-const YA_FOLDER = 'b1gt253a948rpn52kb4m';
+function getYaKey(){ return localStorage.getItem('asense_ya_key')||''; }
+function getYaFolder(){ return localStorage.getItem('asense_ya_folder')||''; }
 
 const PRODUCTS = [
   // Канистры 5л
