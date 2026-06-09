@@ -330,16 +330,7 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 
 <!-- CLIENT -->
 <div id="sec-client">
-  <div style="margin-bottom:14px">
-  <button class="btn btn-dark" style="width:100%;justify-content:center;gap:8px;padding:11px" onclick="document.getElementById('ai-client-block').style.display=document.getElementById('ai-client-block').style.display==='none'?'block':'none'">
-    🎙 Заполнить карточку из описания
-  </button>
-  <div id="ai-client-block" style="display:none;margin-top:8px;padding:12px;background:var(--surface);border:1px solid var(--gold);border-radius:10px">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Опишите клиента свободным текстом — ИИ заполнит поля автоматически</div>
-    <textarea id="ai-client-input" placeholder="Например: ресторан Рыба Моя, Москва, контакт Андрей, 60 посадочных мест, интересует мыло и лосьон" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit;resize:vertical;min-height:70px;outline:none"></textarea>
-    <button id="ai-parse-btn" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:8px" onclick="aiParseClient()">✅ Заполнить</button>
-  </div>
-</div>
+  
 <div class="sec-title">Сегмент</div>
   <div class="seg-tabs">
     <button class="seg-btn active" onclick="setSeg('restaurant',this)">🍽 Ресторан</button>
@@ -372,7 +363,32 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 <input id="p-washrooms" type="number" value="2" min="1" max="20" oninput="recalc()" style="padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit;outline:none;width:100%">
 </div>
 </div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
 <button class="btn btn-dark" onclick="go('products')">→ К продуктам</button>
+<button class="btn" onclick="toggleClientAI()" style="gap:6px">🤖 Спросить ИИ</button>
+</div>
+
+<div id="client-ai-panel" style="display:none;margin-top:16px;padding:18px;background:var(--surface);border:1px solid var(--gold);border-radius:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:500;color:var(--gold)">🤖 ИИ-советник</div>
+    <button onclick="toggleClientAI()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <select id="cai-situation" style="flex:1;min-width:200px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit">
+      <option value="recommend">Что предложить этому клиенту?</option>
+      <option value="upsell">Как увеличить сумму сделки?</option>
+      <option value="objection">Клиент говорит «дорого»</option>
+      <option value="competitor">Есть поставщик — как переключить?</option>
+      <option value="cold">Как выйти на ЛПР?</option>
+      <option value="followup">Что написать после КП?</option>
+    </select>
+    <button class="btn btn-gold" onclick="runClientAI()" id="cai-btn">Спросить →</button>
+  </div>
+  <div style="margin-bottom:10px">
+    <input id="cai-context" type="text" placeholder="Доп. контекст (необязательно)..." style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit;outline:none">
+  </div>
+  <div id="cai-result" style="display:none;font-size:13px;line-height:1.7;padding-top:12px;border-top:1px solid var(--border)"></div>
+</div>
 </div>
 
 <!-- PRODUCTS -->
@@ -1116,6 +1132,100 @@ function onSeatsChange(){
     document.getElementById('p-guests').value = Math.round(seats * mult);
   }
   recalc();
+}
+
+function toggleClientAI(){
+  var panel = document.getElementById('client-ai-panel');
+  if(!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen){
+    // Pre-fill context hint
+    var ctx = document.getElementById('cai-context');
+    if(ctx && !ctx.value){
+      var name = document.getElementById('c-name').value;
+      var city = document.getElementById('c-city').value;
+      ctx.placeholder = (name||'клиент') + (city?' · '+city:'') + ' — уточни детали если нужно';
+    }
+  }
+}
+
+async function runClientAI(){
+  var btn = document.getElementById('cai-btn');
+  var out = document.getElementById('cai-result');
+  var situation = document.getElementById('cai-situation').value;
+  var context = document.getElementById('cai-context').value.trim();
+
+  if(!getYaKey()||!getYaFolder()){ showAISettings(); return; }
+
+  btn.textContent = '⏳...';
+  btn.disabled = true;
+  out.style.display = 'none';
+
+  var clientName = document.getElementById('c-name').value || '(не указано)';
+  var clientCity = document.getElementById('c-city').value || '';
+  var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+  var segName = segNames[state.segment] || '';
+  var guests = document.getElementById('p-guests').value || '0';
+  var disc = document.getElementById('p-disc').value || '0';
+  var selectedProds = PRODUCTS.filter(function(p){return state.checked[p.id];}).map(function(p){return p.name;});
+  var total = 0;
+  PRODUCTS.forEach(function(p){
+    if(!state.checked[p.id]) return;
+    var sn = getNorm(p.id)||p.norm;
+    total += Math.round(p.price*(1-parseInt(disc)/100)) * (state.qty[p.id]||calcCans(sn)||1);
+  });
+
+  var situationMap = {
+    recommend:'Что конкретно предложить? Какие продукты Asense идеально подойдут и почему?',
+    upsell:'Как увеличить сумму сделки? Что добавить к текущему КП?',
+    objection:'Клиент говорит что дорого. Как ответить и удержать?',
+    competitor:'Клиент работает с другим поставщиком. Как переключить на Asense?',
+    cold:'Как выйти на ЛПР в этом типе объекта и назначить встречу?',
+    followup:'КП отправлено. Что написать через 2-3 дня чтобы получить ответ?'
+  };
+
+  var kb = 'БАЗА ЗНАНИЙ ASENSE:\n'
+    + '— Мин. заказ 15 000 ₽. От 30 000 ₽ — флаконы и помпы бесплатно.\n'
+    + '— Доставка бесплатно до СДЭК/КИТ по всей России. Производство Москва, французские ароматы.\n'
+    + '— Клиенты: Mövenpick, ВкусВилл, Рыба Моя, Grace Bistro.\n'
+    + '— При "дорого": предложи образцы бесплатно, цена зависит от объёма.\n'
+    + '— При "есть поставщик": не предлагай менять, предложи попробовать рядом.\n'
+    + '— Ресторан: мыло+лосьон (руки). Отель: полный комплект. СПА: +скраб. Фитнес: мыло+шампунь+гель.\n'
+    + '— Допродажи: к мылу — диффузор для лобби, к миниатюрам — travel kit, к канистрам — кронштейны.';
+
+  var prompt = kb + '\n\nКЛИЕНТ: ' + clientName
+    + ' · ' + segName
+    + (clientCity?' · '+clientCity:'')
+    + ' · Гостей: ' + guests
+    + (selectedProds.length?' · Продукты: '+selectedProds.join(', '):'')
+    + (total?' · Сумма КП: '+Math.round(total).toLocaleString('ru-RU')+' ₽':'')
+    + (parseInt(disc)>0?' · Скидка: '+disc+'%':'')
+    + (context?' · Контекст: '+context:'')
+    + '\n\nВОПРОС: ' + situationMap[situation]
+    + '\n\nДай 3-4 конкретных пункта. Коротко и по делу, на русском.';
+
+  var result = await groqAsk(prompt, 'Ты опытный B2B менеджер Asense. Отвечай коротко, конкретно, по делу. Без вступлений.');
+  btn.textContent = 'Спросить →';
+  btn.disabled = false;
+
+  if(!result){
+    out.innerHTML = '<div style="color:#e44">Нет ответа. Проверь настройки ИИ (кнопка 🤖 вверху).</div>';
+    out.style.display = 'block';
+    return;
+  }
+
+  var lines = result.split('\n').filter(function(l){return l.trim();});
+  out.innerHTML = lines.map(function(l){
+    l = l.trim();
+    if(/^[•\-–—*\d]/.test(l)){
+      var clean = l.replace(/^[•\-–—*\s]+|^\d+\.\s*/,'');
+      return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="color:var(--gold);flex-shrink:0">→</span><span>'+clean+'</span></div>';
+    }
+    return '<div style="color:var(--muted);font-size:12px;padding:3px 0">'+l+'</div>';
+  }).join('');
+  out.style.display = 'block';
 }
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
