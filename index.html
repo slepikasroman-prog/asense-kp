@@ -361,12 +361,18 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   </div>
   <div class="sec-title">Параметры объекта</div>
   <div class="params-row">
-    <div class="param-block" id="seats-block"><label id="lbl-seats">Посадочных мест</label><input id="p-seats" type="number" value="80" oninput="recalc()"></div>
+    <div class="param-block" id="seats-block"><label id="lbl-seats">Посадочных мест</label><input id="p-seats" type="number" value="60" oninput="onSeatsChange()"></div>
     <div class="param-block"><label id="lbl-guests">Гостей / день</label><input id="p-guests" type="number" value="80" oninput="recalc()"></div>
     <div class="param-block"><label>Рабочих дней / мес</label><input id="p-days" type="number" value="26" oninput="recalc()"></div>
     <div class="param-block"><label style="display:flex;align-items:center">Скидка %<i class="tip" data-tip="Уменьшает все цены в КП на указанный процент. 0 = базовые цены из прайса">?</i></label><input id="p-disc" type="number" value="0" min="0" max="90" oninput="recalc()"></div>
   </div>
-  <button class="btn btn-dark" onclick="go('products')">→ К продуктам</button>
+  <div id="washrooms-block" style="margin-top:-8px;margin-bottom:12px;display:none">
+<div class="param-block" style="max-width:200px">
+<label style="font-size:11px;color:var(--muted)">Кол-во уборных</label>
+<input id="p-washrooms" type="number" value="2" min="1" max="20" oninput="recalc()" style="padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:14px;font-weight:500;background:var(--surface);color:var(--text);font-family:inherit;outline:none;width:100%">
+</div>
+</div>
+<button class="btn btn-dark" onclick="go('products')">→ К продуктам</button>
 </div>
 
 <!-- PRODUCTS -->
@@ -1102,6 +1108,15 @@ async function runAIAdvisor(){
   out.style.display = 'block';
 }
 
+
+function onSeatsChange(){
+  var seats = parseInt(document.getElementById('p-seats').value)||0;
+  var mult = SEG_GUESTS_MULT[state.segment];
+  if(mult && seats > 0){
+    document.getElementById('p-guests').value = Math.round(seats * mult);
+  }
+  recalc();
+}
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -1283,6 +1298,8 @@ const SEG_LABELS  = {restaurant:'Посадочных мест',hotel:'Номе�
 const SEG_GUESTS  = {restaurant:80,hotel:90,spa:30,glamping:20,fitness:60};
 const SEG_GUESTS_LABEL = {restaurant:'Гостей / день',hotel:'Гостей / день',spa:'Гостей / день',glamping:'Гостей / день',fitness:'Посетителей / день'};
 const SEG_SHOW_SEATS = {restaurant:true,hotel:true,spa:false,glamping:true,fitness:false};
+const SEG_SEATS_DEFAULT = {restaurant:60,hotel:30,spa:0,glamping:10,fitness:0};
+const SEG_GUESTS_MULT = {restaurant:null,hotel:2.5,spa:null,glamping:2,fitness:null};
 
 const SEG_NORMS = {
   restaurant: {soap:2,  lotion:1,  gel:0,  shampoo:0, cond:0, scrub:0},
@@ -1357,24 +1374,23 @@ function setSeg(seg, el){
   state.segment = seg;
   document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
   if(el) el.classList.add('active');
+  // Labels
+  var lblSeats = document.getElementById('lbl-seats');
+  if(lblSeats) lblSeats.textContent = SEG_LABELS[seg] || '';
+  var lblGuests = document.getElementById('lbl-guests');
+  if(lblGuests) lblGuests.textContent = SEG_GUESTS_LABEL[seg] || 'Гостей / день';
   // Show/hide seats block
-  var seatsBlock = document.getElementById('p-seats') && document.getElementById('p-seats').closest('.param-block');
-  if(seatsBlock) seatsBlock.style.display = SEG_SHOW_SEATS[seg] ? '' : 'none';
-  document.getElementById('lbl-seats').textContent = SEG_LABELS[seg];
-  // Update guests label
-  var guestLabel = document.querySelector('label[for="p-guests"], .param-block:has(#p-guests) label');
-  if(!guestLabel){
-    var pgEl = document.getElementById('p-guests');
-    if(pgEl) guestLabel = pgEl.previousElementSibling || pgEl.parentElement.querySelector('label');
-  }
-  var lbl = document.getElementById('lbl-guests'); if(lbl) lbl.textContent = SEG_GUESTS_LABEL[seg]||'Гостей в день';
-  document.getElementById('p-guests').value = SEG_GUESTS[seg];
-  // Update p-guests label
-  var gl = document.getElementById('lbl-guests');
-  if(gl) gl.textContent = SEG_GUESTS_LABEL[seg] || 'Гостей / день';
-  // Show/hide p-seats block
   var seatsBlock = document.getElementById('seats-block');
   if(seatsBlock) seatsBlock.style.display = SEG_SHOW_SEATS[seg] ? '' : 'none';
+  // Show/hide washrooms (only restaurant)
+  var wrBlock = document.getElementById('washrooms-block');
+  if(wrBlock) wrBlock.style.display = seg==='restaurant' ? '' : 'none';
+  // Set seats default
+  var seatsEl = document.getElementById('p-seats');
+  if(seatsEl && SEG_SEATS_DEFAULT[seg]) seatsEl.value = SEG_SEATS_DEFAULT[seg];
+  // Set guests default
+  document.getElementById('p-guests').value = SEG_GUESTS[seg];
+  // Apply template products
   var tpl = KP_TEMPLATES[seg];
   if(tpl){
     PRODUCTS.forEach(function(p){ state.checked[p.id] = false; });
