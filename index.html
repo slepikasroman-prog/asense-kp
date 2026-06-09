@@ -1776,6 +1776,70 @@ function toggleMobMenu(){
   menu.style.display = isOpen ? 'none' : 'block';
   if(btn) btn.classList.toggle('active', !isOpen);
 }
+
+async function shareKP(id){
+  var saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  var s = saves.find(function(x){return x.id===id;});
+  if(!s){ alert('КП не найдено'); return; }
+
+  // Check Telegram ID
+  var tgId = localStorage.getItem('asense_tg_id')||'';
+  if(!tgId){
+    tgId = prompt('Введите ваш Telegram ID.\nЧтобы узнать — отправьте /start боту @asense_kp_bot');
+    if(!tgId) return;
+    localStorage.setItem('asense_tg_id', tgId);
+  }
+
+  // Generate KP HTML
+  var oldState = JSON.parse(JSON.stringify(state));
+  // Restore state from saved KP
+  if(s.state) Object.assign(state, s.state);
+  if(s.inputs){
+    var fields = {name:'c-name',contact:'c-contact',city:'c-city',phone:'c-phone',
+      address:'c-address',note:'c-note',manager:'c-manager',guests:'p-guests',days:'p-days',disc:'p-disc'};
+    Object.keys(fields).forEach(function(k){
+      var el = document.getElementById(fields[k]);
+      if(el && s.inputs[k]) el.value = s.inputs[k];
+    });
+  }
+  var html = buildKPHtml();
+  // Restore original state
+  Object.assign(state, oldState);
+
+  var linkId = 'kp_' + Date.now().toString(36) + Math.random().toString(36).substr(2,4);
+  var em = getMgrKey();
+
+  // Save to Supabase
+  try {
+    await sbFetch('kp_links', 'POST', {
+      id: linkId,
+      manager_email: em || '',
+      manager_telegram_id: tgId,
+      client_name: s.name || '',
+      segment: s.segment || '',
+      total: s.total || 0,
+      kp_html: html,
+      kp_data: s,
+      views_count: 0
+    });
+  } catch(e){
+    alert('Ошибка сохранения. Попробуйте ещё раз.');
+    return;
+  }
+
+  var url = 'https://asense-kp.vercel.app/api/kp?id=' + linkId;
+  
+  // Copy to clipboard
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch(e){
+    var ta = document.createElement('textarea'); ta.value = url;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  alert('✅ Ссылка скопирована!\n\n' + url + '\n\nОтправьте клиенту — вы получите уведомление в Telegram когда он откроет.');
+}
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -3576,6 +3640,7 @@ function renderHistory(query){
       +'<span style="font-size:11px;padding:2px 8px;border-radius:12px;background:'+statusColors[st]+'22;color:'+statusColors[st]+';border:1px solid '+statusColors[st]+'44">'+statusNames[st]+'</span>'
       +'<button class="btn btn-sm" onclick="previewSave('+s.id+')">👁 КП</button>'
 +'<button class="btn btn-sm" title="Follow-up" onclick="generateFollowUp('+s.id+')">📨</button>'
++'<button class="btn btn-sm" title="Отправить ссылку" onclick="shareKP('+s.id+')">🔗</button>'
       +'<button class="btn btn-sm" onclick="aiFollowup(\'+s.id+\')">📨</button>'
       +'<button class="btn btn-sm btn-dark" onclick="loadSave('+s.id+')">📂 Открыть</button>'
       +'<button class="btn btn-sm" style="color:red;border-color:#ffaaaa" onclick="deleteSave('+s.id+')">🗑</button>'
