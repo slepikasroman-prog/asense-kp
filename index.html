@@ -757,21 +757,22 @@ function renderPrices(){
 async function groqAsk(prompt, systemPrompt){
   try {
     var messages = [];
-    if(systemPrompt) messages.push({role:'system', content:systemPrompt});
-    messages.push({role:'user', content:prompt});
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    if(systemPrompt) messages.push({role:'system', text:systemPrompt});
+    messages.push({role:'user', text:prompt});
+    const r = await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/completion', {
       method:'POST',
-      headers:{'Authorization':'Bearer '+GROQ_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({model:GROQ_MODEL, messages:messages, max_tokens:600, temperature:0.3})
+      headers:{'Authorization':'Api-Key '+YA_KEY,'Content-Type':'application/json','x-folder-id':YA_FOLDER},
+      body:JSON.stringify({
+        modelUri:'gpt://'+YA_FOLDER+'/yandexgpt-lite/latest',
+        completionOptions:{stream:false,temperature:0.3,maxTokens:'600'},
+        messages:messages
+      })
     });
     const d = await r.json();
-    if(!r.ok){
-      console.error('Groq error:', d);
-      return '';
-    }
-    return d.choices?.[0]?.message?.content || '';
+    if(!r.ok){ console.error('Yandex error:', d); return ''; }
+    return d.result?.alternatives?.[0]?.message?.text || '';
   } catch(e){
-    console.error('Groq fetch failed:', e);
+    console.error('Yandex fetch failed:', e);
     return '';
   }
 }
@@ -789,9 +790,7 @@ async function aiParseClient(){
   var prompt = 'Extract from this client description and return ONLY a JSON object with these fields: name (object name), contact (contact person), city (city), phone (phone/email), segment (one of: restaurant/hotel/spa/glamping/fitness), guests (guests per day as number, 0 if unknown), note (short professional intro phrase in Russian for a commercial proposal). If field not mentioned use empty string or 0. Description: "' + text + '"';
 
   var result = await groqAsk(prompt, sysPrompt);
-  console.log('Groq raw response:', result);
-  if(result.startsWith('ERROR:')){ alert('Ошибка подключения к ИИ: ' + result); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
-  if(!result){ alert('ИИ не ответил — проверь интернет'); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
+  if(!result){ alert('ИИ не ответил — попробуй ещё раз'); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
   try {
     // Extract JSON from response — try multiple strategies
     var clean = result.replace(/```json|```/g,'').trim();
@@ -840,7 +839,7 @@ async function aiParseClient(){
       document.getElementById('ai-client-block').style.display = 'none';
       recalc();
     } else {
-      alert('Ответ ИИ: ' + result.substring(0,200));
+      alert('ИИ не смог разобрать. Напиши: название, город, тип объекта.');
     }
   }
   btn.textContent = '✅ Заполнить';
@@ -1016,8 +1015,8 @@ function doAdminLogin(){
 }
 
 
-const GROQ_KEY = atob('Z3NrX2tURDUwdHZjZm9Mb2lUbDd0dVFiV0dkeWIzRllsMEFNc0ZzZ3o0N2ZXUHllOGc5TXIyOUE=');
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const YA_KEY = 'AQVN2d4q6SwSOhhQTOZ2kbJT-NemAxaA_uZudm6g';
+const YA_FOLDER = 'b1gt253a948rpn52kb4m';
 
 const PRODUCTS = [
   // Канистры 5л
