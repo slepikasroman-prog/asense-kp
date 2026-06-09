@@ -819,20 +819,28 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 
 <!-- MOBILE BOTTOM NAV -->
 <nav class="mobile-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark);border-top:1px solid rgba(255,255,255,0.12);z-index:100;padding:6px 0 10px;box-shadow:0 -4px 20px rgba(0,0,0,0.3)">
-  <div style="display:grid;grid-template-columns:repeat(11,1fr);align-items:center;width:100%">
-    <button onclick="go('client')"   id="mob-client"   class="mob-btn active"><span class="mob-icon">🏢</span><span>Клиент</span></button>
-    <button onclick="go('products')" id="mob-products" class="mob-btn"><span class="mob-icon">📦</span><span>Продукты</span></button>
-    <button onclick="go('preview')"  id="mob-preview"  class="mob-btn"><span class="mob-icon">📄</span><span>КП</span></button>
-    <button onclick="go('history')"  id="mob-history"  class="mob-btn"><span class="mob-icon">🕐</span><span>История</span></button>
-    <button onclick="go('prices')"   id="mob-prices"   class="mob-btn"><span class="mob-icon">💰</span><span>Прайс</span></button>
-    <button onclick="go('custom')"   id="mob-custom"   class="mob-btn"><span class="mob-icon">✏️</span><span>КП</span></button>
-    <button onclick="go('retail')"   id="mob-retail"   class="mob-btn"><span class="mob-icon">🛍</span><span>Ритейл</span></button>
-    <button onclick="go('dashboard')" id="mob-dashboard" class="mob-btn"><span class="mob-icon">📊</span><span>Дашборд</span></button>
-    <button onclick="go('sales')"     id="mob-sales"     class="mob-btn"><span class="mob-icon">💼</span><span>Продажи</span></button>
-    <button onclick="go('faq')"      id="mob-faq"      class="mob-btn"><span class="mob-icon">💬</span><span>FAQ</span></button>
-    <button onclick="go('kb')"       id="mob-kb"       class="mob-btn"><span class="mob-icon">📚</span><span>База</span></button>
-  </div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);align-items:center;width:100%">
+<button onclick="go('client')"  id="mob-client"  class="mob-btn active"><span class="mob-icon">🏢</span><span>Клиент</span></button>
+<button onclick="go('products')" id="mob-products" class="mob-btn"><span class="mob-icon">📦</span><span>Продукты</span></button>
+<button onclick="go('preview')" id="mob-preview" class="mob-btn"><span class="mob-icon">📄</span><span>КП</span></button>
+<button onclick="go('ai')"      id="mob-ai"      class="mob-btn"><span class="mob-icon">🤖</span><span>ИИ</span></button>
+<button onclick="toggleMobMenu()" id="mob-more" class="mob-btn"><span class="mob-icon">☰</span><span>Ещё</span></button>
+</div>
 </nav>
+
+<div id="mob-menu" style="display:none;position:fixed;bottom:72px;left:0;right:0;background:var(--dark);border-top:1px solid rgba(255,255,255,0.12);z-index:99;padding:8px 0">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px 8px">
+<button onclick="go('history');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">🕐</span><span>История</span></button>
+<button onclick="go('prices');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">💰</span><span>Прайс</span></button>
+<button onclick="go('custom');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">✏️</span><span>Составить</span></button>
+<button onclick="go('retail');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">🛍</span><span>Ритейл</span></button>
+<button onclick="go('dashboard');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">📊</span><span>Дашборд</span></button>
+<button onclick="go('sales');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">💼</span><span>Продажи</span></button>
+<button onclick="go('faq');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">💬</span><span>FAQ</span></button>
+<button onclick="go('kb');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">📚</span><span>База</span></button>
+<button onclick="go('profile');toggleMobMenu()" class="mob-btn" style="padding:8px 4px"><span class="mob-icon">👤</span><span>Профиль</span></button>
+</div>
+</div>
 
 <script>
 // ===== SUPABASE =====
@@ -1759,6 +1767,15 @@ function addMiniToExcel(){
   alert('✅ Сравнение будет добавлено в Excel. Нажмите «Excel» в топбаре для скачивания.');
 }
 
+
+function toggleMobMenu(){
+  var menu = document.getElementById('mob-menu');
+  var btn = document.getElementById('mob-more');
+  if(!menu) return;
+  var isOpen = menu.style.display !== 'none';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if(btn) btn.classList.toggle('active', !isOpen);
+}
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
