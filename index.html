@@ -830,7 +830,17 @@ async function aiParseClient(){
   btn.disabled = true;
 
   var sysPrompt = 'You are a JSON extractor. You ONLY output valid JSON. No explanations, no markdown, no extra text. Just the JSON object.';
-  var prompt = 'Extract from this client description and return ONLY a JSON object with these fields: name (object name), contact (contact person), city (city), phone (phone/email), segment (one of: restaurant/hotel/spa/glamping/fitness), guests (guests per day as number, 0 if unknown), note (short professional intro phrase in Russian for a commercial proposal). If field not mentioned use empty string or 0. Description: "' + text + '"';
+  var prompt = 'Extract from this Russian B2B client description and return ONLY a JSON object with exactly these fields:\n'
+    + '- name: название объекта (ресторан, отель и т.д.)\n'
+    + '- contact: имя контактного лица (только имя, если упомянуто)\n'
+    + '- city: город\n'
+    + '- phone: телефон или email\n'
+    + '- segment: ТОЛЬКО одно из: restaurant, hotel, spa, glamping, fitness\n'
+    + '- guests: число гостей В ДЕНЬ (целое число, 0 если не указано). Посадочных мест = guests для ресторана\n'
+    + '- note: ПУСТАЯ СТРОКА — вводную фразу НЕ генерировать, оставить пустой\n'
+    + '- discount: скидка в процентах (число, 0 если не указано)\n'
+    + 'Если поле не упомянуто — пустая строка или 0. Segment определяй по типу объекта.\n'
+    + 'Description: "' + text + '"';
 
   var result = await groqAsk(prompt, sysPrompt);
   if(result==='__NO_KEY__'){ showAISettings(); btn.textContent='✅ Заполнить'; btn.disabled=false; return; }
@@ -848,6 +858,7 @@ async function aiParseClient(){
     if(data.phone) document.getElementById('c-phone').value = data.phone;
     if(data.note) document.getElementById('c-note').value = data.note;
     if(data.guests && data.guests > 0) document.getElementById('p-guests').value = data.guests;
+    if(data.discount && data.discount > 0){ var discEl=document.getElementById('p-disc'); if(discEl) discEl.value=data.discount; }
     if(data.segment){
       var segMap = {restaurant:0,hotel:1,spa:2,glamping:3,fitness:4};
       var sidx = segMap[data.segment];
