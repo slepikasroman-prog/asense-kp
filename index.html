@@ -1284,14 +1284,9 @@ async function analyzeChat(){
   var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
   var seg = segNames[state.segment] || '';
 
-  // Take last 2000 chars + first 500 to get context + recency
-  var textStart = text.substring(0, 400);
-  var textEnd = text.substring(Math.max(0, text.length - 2500));
-  var textForAI = (text.length > 2900 ? textStart + '\n[...середина переписки...]\n' + textEnd : text);
-
   var prompt = 'Ты опытный B2B менеджер по продажам косметики Asense для HoReCa.\n'
     + 'Клиент: ' + clientName + ' (' + seg + ')\n\n'
-    + 'ПЕРЕПИСКА (читай внимательно, особенно ПОСЛЕДНИЕ сообщения):\n' + textForAI
+    + 'ПЕРЕПИСКА (вся, читай от начала до конца, особенно ПОСЛЕДНИЕ сообщения):\n' + text.substring(0, 6000)
     + '\n\nЗАДАЧА:\n'
     + '1. ТЕКУЩАЯ СТАДИЯ (1 строка): где сейчас находится сделка исходя из последних сообщений\n'
     + '2. ЧТО НУЖНО СДЕЛАТЬ: 2-3 конкретных действия для закрытия сделки\n'
