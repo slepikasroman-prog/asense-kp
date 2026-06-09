@@ -430,7 +430,10 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   <div class="sec-title">Оборудование и аксессуары</div>
   <div class="prod-list" id="list-equip"></div>
 
-  <div class="free-notice">🎁 При заказе от 30 000 ₽: флаконы 300 мл (4 шт.), помпы (2 шт.), брендирование — бесплатно</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 14px;background:var(--green-bg);border-radius:8px;font-size:12px;color:var(--green-t);margin:12px 0">
+<span>🎁 Бонусы при заказе от 50 000 ₽: флаконы 300 мл (4 шт.), помпы (2 шт.), брендирование</span>
+<button id="btn-bonuses" onclick="toggleBonuses()" style="padding:4px 12px;border-radius:6px;border:1px solid var(--green-t);background:transparent;color:var(--green-t);cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap">+ Добавить в КП</button>
+</div>
 
   <div class="divider"></div>
   <div class="sec-title">Дополнительные позиции</div>
@@ -538,7 +541,7 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
       <div></div>
     </div>
     <div style="margin-top:10px;padding:10px 14px;background:var(--green-bg);border-radius:8px;font-size:12px;color:var(--green-t);display:flex;align-items:center;gap:8px">
-      🎁 При заказе от 30 000 ₽: флаконы, помпы, брендирование — бесплатно
+      🎁 Бонусы при заказе от 50 000 ₽: флаконы, помпы, брендирование
     </div>
     <div id="ckp-picker" style="display:none;margin-top:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
       <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px">Выберите продукт из каталога:</div>
@@ -1077,7 +1080,7 @@ async function runAIAdvisor(){
 
   // Condensed knowledge base for prompt
   var kb = 'БАЗА ЗНАНИЙ ASENSE:\n'
-    + '— Мин. заказ 15 000 ₽. От 30 000 ₽ — флаконы и помпы бесплатно.\n'
+    + '— Мин. заказ 15 000 ₽. От 50 000 ₽ — флаконы, помпы и брендирование бесплатно.\n'
     + '— Доставка бесплатно до СДЭК/КИТ по всей России.\n'
     + '— Производство Москва, французские ароматы, матовое стекло.\n'
     + '— Клиенты: Mövenpick, ВкусВилл, Рыба Моя, Grace Bistro.\n'
@@ -1186,7 +1189,7 @@ async function runClientAI(){
   };
 
   var kb = 'БАЗА ЗНАНИЙ ASENSE:\n'
-    + '— Мин. заказ 15 000 ₽. От 30 000 ₽ — флаконы и помпы бесплатно.\n'
+    + '— Мин. заказ 15 000 ₽. От 50 000 ₽ — флаконы, помпы и брендирование бесплатно.\n'
     + '— Доставка бесплатно до СДЭК/КИТ по всей России. Производство Москва, французские ароматы.\n'
     + '— Клиенты: Mövenpick, ВкусВилл, Рыба Моя, Grace Bistro.\n'
     + '— При "дорого": предложи образцы бесплатно, цена зависит от объёма.\n'
@@ -1226,6 +1229,18 @@ async function runClientAI(){
     return '<div style="color:var(--muted);font-size:12px;padding:3px 0">'+l+'</div>';
   }).join('');
   out.style.display = 'block';
+}
+
+function toggleBonuses(){
+  state.bonuses = !state.bonuses;
+  var btn = document.getElementById('btn-bonuses');
+  if(btn){
+    btn.textContent = state.bonuses ? '✕ Убрать из КП' : '+ Добавить в КП';
+    btn.style.background = state.bonuses ? 'var(--green-t)' : 'transparent';
+    btn.style.color = state.bonuses ? '#fff' : 'var(--green-t)';
+  }
+  updateTotals();
+  if(document.getElementById('sec-preview').style.display !== 'none') renderPreview();
 }
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
@@ -1432,6 +1447,7 @@ let state = {
   aromasSpa:new Set(),
   productAroma:{},
   customItems:[],
+bonuses:false,
 };
 
 const v = id => document.getElementById(id).value.trim();
@@ -1717,9 +1733,11 @@ function buildKPHtml(forPrint=false){
     });
   }
 
-  rows+=`<tr class="kp-free"><td>Флаконы 300 мл</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-free"><td>Брендирование флаконов (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
-  rows+=`<tr class="kp-free"><td>Помпы для канистр — 2 шт. (от 30 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  if(state.bonuses){
+  rows+=`<tr class="kp-free"><td>Флаконы 300 мл — 4 шт.</td><td>4 шт.</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Брендирование флаконов (от 50 000 ₽)</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  rows+=`<tr class="kp-free"><td>Помпы для канистр 5 л</td><td>—</td><td>—</td><td style="color:#2E7D32;font-weight:500">Бесплатно</td></tr>`;
+  }
   rows+=`<tr class="kp-tot"><td colspan="3">Итого к оплате</td><td>${fmt(total)}</td></tr>`;
 
   let aromaNote='';
@@ -1931,9 +1949,11 @@ function exportExcel(){
     });
   }
 
-  r1.push([free('Флаконы 300 мл — 4 шт. (от 30 000 ₽)'),free('4 шт.'),free(''),free('—'),free('Бесплатно')]);
-  r1.push([free('Брендирование флаконов (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
-  r1.push([free('Помпы для канистр — 2 шт. (от 30 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+  if(state.bonuses){
+  r1.push([free('Флаконы 300 мл — 4 шт.'),free('4 шт.'),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Брендирование флаконов (от 50 000 ₽)'),free(''),free(''),free('—'),free('Бесплатно')]);
+  r1.push([free('Помпы для канистр — 2 шт.'),free(''),free(''),free('—'),free('Бесплатно')]);
+  }
 
   // Total row with SUM formula
   const totRowIdx = r1.length+1;
@@ -2066,8 +2086,8 @@ function exportExcel(){
   cosm.forEach(function(p){ var sn=getNorm(p.id)||p.norm; estTotal+=Math.round(p.price*(1-disc/100))*(state.qty[p.id]||calcCans(sn)); });
   selEquip.forEach(function(e){ estTotal+=Math.round(e.price*(1-disc/100))*(state.qty[e.id]||1); });
   PRODUCTS.filter(function(p){return state.checked[p.id]&&p.type!=='cosmetic';}).forEach(function(p){ estTotal+=Math.round(p.price*(1-disc/100))*(state.qty[p.id]||1); });
-  if(estTotal >= 30000){
-    r2.push([xlCell('🎁 При заказе от 30 000 ₽: флаконы 300 мл (4 шт.) и помпы для канистр (2 шт.) — бесплатно',{bg:'E8F5E9',fg:'2E7D32',sz:10,bold:true,wrap:true}),null,null,null,null,null]);
+  if(state.bonuses){
+    r2.push([xlCell('🎁 Бонусы: флаконы 300 мл (4 шт.) и помпы для канистр (2 шт.) — бесплатно',{bg:'E8F5E9',fg:'2E7D32',sz:10,bold:true,wrap:true}),null,null,null,null,null]);
     m2.push({s:{r:r2.length-1,c:0},e:{r:r2.length-1,c:5}});
     r2.push([null,null,null,null,null,null]);
   }
@@ -2228,7 +2248,7 @@ function importBackup(input){
 const FAQ_DATA = [
   {
     q: "Какой минимальный заказ?",
-    a: "Минимальный заказ — от 15 000 ₽. При заказе от 30 000 ₽ флаконы, помпы и брендирование — бесплатно."
+    a: "Минимальный заказ — от 15 000 ₽. При заказе от 50 000 ₽ флаконы, помпы и брендирование — бесплатно."
   },
   {
     q: "Сколько стоит доставка?",
