@@ -302,6 +302,7 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   <div class="nav-item" onclick="go('faq')" id="nav-faq">💬 FAQ</div>
   <div class="nav-item" onclick="go('kb')" id="nav-kb">📚 База знаний</div>
   <div class="nav-item" onclick="go('profile')" id="nav-profile">👤 Мой профиль</div>
+<div class="nav-item" onclick="go('ai')" id="nav-ai">🤖 ИИ-советник</div>
   <div class="sidebar-footer">
     <div id="sidebar-user" style="color:var(--gold);font-weight:500;margin-bottom:6px;font-size:12px"></div>
     ООО «АСЕНС»<br>
@@ -675,6 +676,50 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 </div>
 
 <!-- PROFILE -->
+
+<div id="sec-ai" style="display:none">
+  <div style="max-width:680px">
+    <div style="padding:16px 20px;background:var(--dark);border-radius:10px;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:500;color:var(--gold)">🤖 ИИ-советник</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Рекомендации по сделке на основе данных клиента и базы знаний</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+      <div class="fg">
+        <label>Ситуация / вопрос</label>
+        <select id="ai-situation" style="padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit">
+          <option value="recommend">Что предложить этому клиенту?</option>
+          <option value="upsell">Как увеличить сумму сделки?</option>
+          <option value="objection">Клиент говорит «дорого»</option>
+          <option value="competitor">Клиент говорит «есть поставщик»</option>
+          <option value="cold">Как выйти на ЛПР?</option>
+          <option value="followup">Что написать после отправки КП?</option>
+          <option value="custom">Свой вопрос →</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Доп. контекст (необязательно)</label>
+        <input id="ai-context" type="text" placeholder="Например: уже работали с другим брендом...">
+      </div>
+    </div>
+
+    <div id="ai-custom-block" style="display:none;margin-bottom:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+      <div class="fg"><label>Ваш вопрос</label>
+      <textarea id="ai-custom-q" placeholder="Спросите что угодно про эту сделку..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical;min-height:60px;outline:none"></textarea>
+      </div>
+    </div>
+
+    <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px;font-size:14px;margin-bottom:16px" onclick="runAIAdvisor()">
+      🤖 Получить рекомендацию
+    </button>
+
+    <div id="ai-advisor-result" style="display:none;padding:18px;background:var(--surface);border:1px solid var(--gold);border-radius:10px;font-size:13px;line-height:1.7;color:var(--text)"></div>
+
+    <div style="margin-top:12px;padding:10px 14px;background:var(--light);border-radius:8px;font-size:11px;color:var(--muted);border:1px solid var(--border)">
+      💡 ИИ-советник использует базу знаний Asense: скрипты, работу с возражениями, допродажи. Рекомендации адаптируются под текущего клиента.
+    </div>
+  </div>
+</div>
 <div id="sec-profile" style="display:none">
   <div style="max-width:480px">
     <div style="padding:16px 20px;background:var(--dark);border-radius:10px;margin-bottom:20px">
@@ -943,6 +988,116 @@ function saveAISettings(){
   document.getElementById('ai-settings-modal').style.display='none';
   alert('✅ Сохранено! Теперь ИИ доступен.');
 }
+
+function renderAI(){
+  // Pre-fill context from current client if available
+  var name = document.getElementById('c-name').value;
+  var ctx = document.getElementById('ai-context');
+  if(ctx && name && !ctx.value){
+    var seg = {restaurant:'ресторан',hotel:'отель',spa:'спа',glamping:'глэмпинг',fitness:'фитнес'}[state.segment]||'';
+    var city = document.getElementById('c-city').value;
+    ctx.placeholder = (name||'') + (seg?' · '+seg:'') + (city?' · '+city:'');
+  }
+  // Toggle custom question block
+  var sel = document.getElementById('ai-situation');
+  if(sel){
+    sel.addEventListener('change', function(){
+      var cb = document.getElementById('ai-custom-block');
+      if(cb) cb.style.display = this.value==='custom' ? 'block' : 'none';
+    });
+  }
+}
+
+async function runAIAdvisor(){
+  var btn = event.target.closest('button');
+  var out = document.getElementById('ai-advisor-result');
+  var situation = document.getElementById('ai-situation').value;
+  var context = document.getElementById('ai-context').value.trim();
+  var customQ = document.getElementById('ai-custom-q').value.trim();
+
+  if(!getYaKey()||!getYaFolder()){ showAISettings(); return; }
+
+  btn.textContent = '⏳ Думаю...';
+  btn.disabled = true;
+  out.style.display = 'none';
+
+  // Build client context
+  var clientName = document.getElementById('c-name').value || '(не указано)';
+  var clientCity = document.getElementById('c-city').value || '';
+  var clientContact = document.getElementById('c-contact').value || '';
+  var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+  var segName = segNames[state.segment] || '';
+  var guests = document.getElementById('p-guests').value || '0';
+  var disc = document.getElementById('p-disc').value || '0';
+  var selectedProds = PRODUCTS.filter(function(p){return state.checked[p.id];}).map(function(p){return p.name;});
+
+  // Estimate total
+  var total = 0;
+  PRODUCTS.forEach(function(p){
+    if(!state.checked[p.id]) return;
+    var sn = getNorm(p.id)||p.norm;
+    total += Math.round(p.price*(1-parseInt(disc)/100)) * (state.qty[p.id]||calcCans(sn)||1);
+  });
+
+  var situationMap = {
+    recommend: 'Что конкретно предложить этому клиенту? Какие продукты Asense идеально подойдут и почему?',
+    upsell: 'Как увеличить сумму этой сделки? Что добавить к текущему КП?',
+    objection: 'Клиент говорит что дорого. Как ответить и удержать сделку?',
+    competitor: 'Клиент говорит что уже работает с другим поставщиком. Как переключить на Asense?',
+    cold: 'Как правильно выйти на ЛПР и назначить встречу в этом типе объекта?',
+    followup: 'КП отправлено. Что написать клиенту через 2-3 дня чтобы получить ответ?',
+    custom: customQ || 'Дай общую рекомендацию по сделке'
+  };
+
+  // Condensed knowledge base for prompt
+  var kb = 'БАЗА ЗНАНИЙ ASENSE:\n'
+    + '— Мин. заказ 15 000 ₽. От 30 000 ₽ — флаконы и помпы бесплатно.\n'
+    + '— Доставка бесплатно до СДЭК/КИТ по всей России.\n'
+    + '— Производство Москва, французские ароматы, матовое стекло.\n'
+    + '— Клиенты: Mövenpick, ВкусВилл, Рыба Моя, Grace Bistro.\n'
+    + '— При возражении "дорого": предложи начать с образцов бесплатно, скажи что цена зависит от объёма.\n'
+    + '— При возражении "есть поставщик": не предлагай менять, предложи попробовать рядом.\n'
+    + '— Ресторан: мыло + лосьон (руки). Отель: полный комплект. СПА: добавить скраб. Фитнес: мыло + шампунь + гель.\n'
+    + '— Допродажи: к мылу — диффузор для лобби, к миниатюрам — travel kit, к канистрам — кронштейны.\n'
+    + '— Follow-up: через 2-3 дня после образцов спросить впечатления. Через 7 дней — звонок.\n'
+    + '— Скрипт холодного звонка: 50-70 сек, предложить образцы, не давить.';
+
+  var prompt = kb + '\n\nКЛИЕНТ:\n'
+    + 'Название: ' + clientName + '\n'
+    + 'Сегмент: ' + segName + '\n'
+    + (clientCity ? 'Город: ' + clientCity + '\n' : '')
+    + (clientContact ? 'Контакт: ' + clientContact + '\n' : '')
+    + 'Гостей/день: ' + guests + '\n'
+    + 'Выбраны продукты: ' + (selectedProds.join(', ')||'не выбраны') + '\n'
+    + 'Сумма КП: ' + (total ? Math.round(total).toLocaleString('ru-RU') + ' ₽' : 'не рассчитана') + '\n'
+    + (parseInt(disc) > 0 ? 'Скидка: ' + disc + '%\n' : '')
+    + (context ? 'Доп. контекст: ' + context + '\n' : '')
+    + '\nВОПРОС: ' + situationMap[situation]
+    + '\n\nДай конкретный практический совет 3-5 пунктами. Отвечай на русском, коротко и по делу.';
+
+  var sysPrompt = 'Ты опытный B2B менеджер по продажам Asense — производителя премиальной косметики для HoReCa. Даёшь конкретные практические советы. Без воды, без вступлений, сразу по делу.';
+
+  var result = await groqAsk(prompt, sysPrompt);
+  btn.textContent = '🤖 Получить рекомендацию';
+  btn.disabled = false;
+
+  if(!result){ out.innerHTML = '<div style="color:#e44">ИИ не ответил. Проверь настройки (кнопка 🤖 вверху).</div>'; out.style.display='block'; return; }
+
+  // Format result
+  var formatted = result
+    .split('\n')
+    .filter(function(l){ return l.trim(); })
+    .map(function(l){
+      l = l.trim();
+      if(/^[•\-–—*]/.test(l)) return '<div style="padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:8px"><span style="color:var(--gold);flex-shrink:0">→</span><span>'+l.replace(/^[•\-–—*\s]+/,'')+'</span></div>';
+      if(/^\d+\./.test(l)) return '<div style="padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:8px"><span style="color:var(--gold);flex-shrink:0;font-weight:500">'+l.match(/^\d+/)[0]+'.</span><span>'+l.replace(/^\d+\.\s*/,'')+'</span></div>';
+      return '<div style="padding:4px 0;color:var(--muted);font-size:12px">'+l+'</div>';
+    }).join('');
+
+  out.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">💬 Рекомендация для: <strong style="color:var(--text)">'+clientName+'</strong> · '+segName+'</div>' + formatted;
+  out.style.display = 'block';
+}
+
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -1133,8 +1288,8 @@ const SEG_NORMS = {
   fitness:    {soap:3,  lotion:0,  gel:6,  shampoo:5, cond:0, scrub:0},
 };
 function getNorm(id){ var sn=SEG_NORMS[state.segment]; return (sn && sn[id]!==undefined) ? sn[id] : 0; }
-const SECTIONS = ['client','products','preview','history','prices','custom','retail','dashboard','sales','faq','kb','profile'];
-const TITLES   = {client:'Клиент',products:'Продукты',preview:'Предпросмотр КП',history:'История КП',prices:'Прайс — редактор цен',custom:'✏️ Составить КП вручную',retail:'🛍 Ритейл — прайс и КП',dashboard:'📊 Дашборд продаж',sales:'💼 Мои продажи',faq:'FAQ — Частые вопросы',kb:'📚 База знаний отдела продаж',profile:'👤 Профиль менеджера'};
+const SECTIONS = ['client','products','preview','history','prices','custom','retail','dashboard','sales','faq','kb','profile','ai'];
+const TITLES   = {client:'Клиент',products:'Продукты',preview:'Предпросмотр КП',history:'История КП',prices:'Прайс — редактор цен',custom:'✏️ Составить КП вручную',retail:'🛍 Ритейл — прайс и КП',dashboard:'📊 Дашборд продаж',sales:'💼 Мои продажи',faq:'FAQ — Частые вопросы',kb:'📚 База знаний отдела продаж',profile:'👤 Профиль менеджера',ai:'🤖 ИИ-советник'};
 
 let state = {
   segment:'restaurant',
@@ -1188,6 +1343,7 @@ function go(id){
   if(id==='retail')   renderRetail();
   if(id==='kb')      renderKB();
   if(id==='profile') loadProfile();
+if(id==='ai') renderAI();
   document.querySelectorAll('.mob-btn').forEach(function(b){b.classList.remove('active');});
   var mob2 = document.getElementById('mob-'+id);
   if(mob2) mob2.classList.add('active');
