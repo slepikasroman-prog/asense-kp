@@ -367,8 +367,8 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   </div>
   <div class="sec-title">Параметры объекта</div>
   <div class="params-row">
-    <div class="param-block"><label id="lbl-seats">Посадочных мест</label><input id="p-seats" type="number" value="80" oninput="recalc()"></div>
-    <div class="param-block"><label id="lbl-guests">Гостей в день</label><input id="p-guests" type="number" value="80" oninput="recalc()"></div>
+    <div class="param-block" id="seats-block"><label id="lbl-seats">Посадочных мест</label><input id="p-seats" type="number" value="80" oninput="recalc()"></div>
+    <div class="param-block"><label id="lbl-guests">Гостей / день</label><input id="p-guests" type="number" value="80" oninput="recalc()"></div>
     <div class="param-block"><label>Рабочих дней / мес</label><input id="p-days" type="number" value="26" oninput="recalc()"></div>
     <div class="param-block"><label style="display:flex;align-items:center">Скидка %<i class="tip" data-tip="Уменьшает все цены в КП на указанный процент. 0 = базовые цены из прайса">?</i></label><input id="p-disc" type="number" value="0" min="0" max="90" oninput="recalc()"></div>
   </div>
@@ -1120,10 +1120,10 @@ const EQUIP = [
 const AROMAS_COS  = ['Pure Cannabis','Virgin Lemongrass','Tobacco Leaf & Vanilla','Vetiver & Rosemary','Sea Salt & Wood'];
 const AROMAS_DIFF = ['Pure Cannabis','Oud Wealth','Warm Cinnamon Bun','Tobacco Leaf & Vanilla','Virgin Lemongrass'];
 const AROMAS_SPA  = ['White Lotus (SPA edition)','Hamam Lover (SPA edition)','Meditation Session (SPA edition)'];
-const SEG_LABELS  = {restaurant:'Посадочных мест',hotel:'Номеров',spa:'Гостей/день',glamping:'Лоджей / домиков',fitness:'Посетителей/день'};
+const SEG_LABELS  = {restaurant:'Посадочных мест',hotel:'Номеров',spa:'',glamping:'Лоджей / домиков',fitness:''};
 const SEG_GUESTS  = {restaurant:80,hotel:90,spa:30,glamping:20,fitness:60};
+const SEG_GUESTS_LABEL = {restaurant:'Гостей / день',hotel:'Гостей / день',spa:'Гостей / день',glamping:'Гостей / день',fitness:'Посетителей / день'};
 const SEG_SHOW_SEATS = {restaurant:true,hotel:true,spa:false,glamping:true,fitness:false};
-const SEG_GUESTS_LABEL = {restaurant:'Гостей в день',hotel:'Гостей в день',spa:'Гостей / посетителей в день',glamping:'Гостей в день',fitness:'Посетителей в день'};
 
 const SEG_NORMS = {
   restaurant: {soap:2,  lotion:1,  gel:0,  shampoo:0, cond:0, scrub:0},
@@ -1209,6 +1209,12 @@ function setSeg(seg, el){
   }
   var lbl = document.getElementById('lbl-guests'); if(lbl) lbl.textContent = SEG_GUESTS_LABEL[seg]||'Гостей в день';
   document.getElementById('p-guests').value = SEG_GUESTS[seg];
+  // Update p-guests label
+  var gl = document.getElementById('lbl-guests');
+  if(gl) gl.textContent = SEG_GUESTS_LABEL[seg] || 'Гостей / день';
+  // Show/hide p-seats block
+  var seatsBlock = document.getElementById('seats-block');
+  if(seatsBlock) seatsBlock.style.display = SEG_SHOW_SEATS[seg] ? '' : 'none';
   var tpl = KP_TEMPLATES[seg];
   if(tpl){
     PRODUCTS.forEach(function(p){ state.checked[p.id] = false; });
