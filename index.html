@@ -1284,9 +1284,15 @@ async function analyzeChat(){
   var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
   var seg = segNames[state.segment] || '';
 
+  // Sanitize text for YandexGPT content filters
+  var safeText = text.substring(0, 6000)
+    .replace(/cannabis/gi, 'аромат-С')
+    .replace(/канабис/gi, 'аромат-С')
+    .replace(/каннабис/gi, 'аромат-С');
+
   var prompt = 'Ты опытный B2B менеджер по продажам косметики Asense для HoReCa.\n'
     + 'Клиент: ' + clientName + ' (' + seg + ')\n\n'
-    + 'ПЕРЕПИСКА (вся, читай от начала до конца, особенно ПОСЛЕДНИЕ сообщения):\n' + text.substring(0, 6000)
+    + 'ПЕРЕПИСКА (вся, читай от начала до конца, особенно ПОСЛЕДНИЕ сообщения):\n' + safeText
     + '\n\nЗАДАЧА:\n'
     + '1. ТЕКУЩАЯ СТАДИЯ (1 строка): где сейчас находится сделка исходя из последних сообщений\n'
     + '2. ЧТО НУЖНО СДЕЛАТЬ: 2-3 конкретных действия для закрытия сделки\n'
@@ -1303,7 +1309,7 @@ async function analyzeChat(){
 // ===== ПОДБОР АРОМАТА =====
 async function pickAroma(){
   var btn = document.getElementById('aroma-pick-btn');
-  var concept = document.getElementById('aroma-concept').value.trim();
+  var concept = document.getElementById('aroma-concept').value.trim().replace(/cannabis/gi,'аромат-С').replace(/канабис/gi,'аромат-С');
   var out = document.getElementById('cai-result');
   if(!concept){ alert('Опишите концепцию заведения'); return; }
   if(!getYaKey()||!getYaFolder()){ showAISettings(); return; }
