@@ -16,25 +16,25 @@
 
 ### GitHub
 - Репо: `asensestore/asense-kp`
-- Personal Access Token: `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`
+- Personal Access Token: `[см. у Романа или создать новый в GitHub Settings → Developer settings]`
 - ⚠️ Токены протухают — при истечении создать новый на github.com → Settings → Developer settings → Personal access tokens
 
 ### Supabase
 - URL: `https://mtotltoanudwuxbvhejl.supabase.co`
-- Anon key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10b3RsdG9hbnVkd3V4YnZoZWpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1Njk3OTAsImV4cCI6MjA5NjE0NTc5MH0.Gpl8skzkvSmUY3cNiPO0IQbgvhyLjFvMOvs5Spi1Xro`
-- Пароль проекта: `reka2882zxc`
+- Anon key: `[см. у Романа — Supabase Project Settings → API]`
+- Пароль проекта: `[у Романа]`
 - Таблицы: `kp_history`, `sales`, `sales_plans`, `manager_profiles`, `ai_knowledge`
 
 ### Yandex Cloud (YandexGPT API)
 - Folder ID: `b1gt253a948rpn52kb4m`
-- API Key: `AQVN2d4q6SwSOhhQTOZ2kbJT-NemAxaA_uZudm6g`
+- API Key: `[создать новый в console.yandex.cloud → Сервисные аккаунты → asense-ai]`
 - Сервисный аккаунт: `asense-ai`
 - Консоль: https://console.yandex.cloud
 - ⚠️ Ключ зашит в коде через base64. При смене — обновить в `index.html` функцию `getYaKey()`
 
 ### Приложение (логин)
 - Менеджер: любое имя
-- Администратор: пароль `reka2882`
+- Администратор: пароль `[у Романа]`
 
 ## 🏗 Архитектура
 
@@ -121,3 +121,11 @@ git push
 5. Стиль кода: vanilla JS, без jQuery/React, минимум зависимостей
 6. Цвета: `--gold: #C9A84C`, `--dark: #1A1A2E`, `--navy: #2E4057`
 
+
+## 🔑 Где взять ключи
+
+Все актуальные ключи хранятся у Романа Шлепикаса (Telegram: @Asense_store_b2b).
+При необходимости можно создать новые:
+- **GitHub token**: github.com → Settings → Developer settings → Personal access tokens → Fine-grained
+- **Supabase key**: supabase.com → проект → Settings → API
+- **Yandex API key**: console.yandex.cloud → Сервисные аккаунты → asense-ai → API-ключи
