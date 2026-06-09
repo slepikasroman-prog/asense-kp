@@ -1290,9 +1290,21 @@ async function analyzeChat(){
     .replace(/канабис/gi, 'аромат-С')
     .replace(/каннабис/gi, 'аромат-С');
 
+  // Extract last message from conversation
+  var lines = safeText.split('\n').filter(function(l){ return l.trim(); });
+  var lastMsg = lines[lines.length-1] || '';
+  var lastClient = '';
+  for(var i=lines.length-1;i>=0;i--){
+    if(lines[i].indexOf('клиент')>-1 || lines[i].indexOf('Александр')>-1){
+      lastClient=lines[i]; break;
+    }
+  }
+
   var prompt = 'Ты опытный B2B менеджер по продажам косметики Asense для HoReCa.\n'
     + 'Клиент: ' + clientName + ' (' + seg + ')\n\n'
-    + 'ПЕРЕПИСКА (вся, читай от начала до конца, особенно ПОСЛЕДНИЕ сообщения):\n' + safeText
+    + '=== ВСЯ ПЕРЕПИСКА ===\n' + safeText + '\n\n'
+    + '=== ПОСЛЕДНЕЕ СООБЩЕНИЕ В ПЕРЕПИСКЕ ===\n' + lastMsg + '\n\n'
+    + 'Исходя из ВСЕЙ переписки и ПОСЛЕДНЕГО сообщения'
     + '\n\nЗАДАЧА:\n'
     + '1. ТЕКУЩАЯ СТАДИЯ (1 строка): где сейчас находится сделка исходя из последних сообщений\n'
     + '2. ЧТО НУЖНО СДЕЛАТЬ: 2-3 конкретных действия для закрытия сделки\n'

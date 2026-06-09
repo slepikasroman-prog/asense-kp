@@ -18,7 +18,7 @@ export default async function handler(req, res) {
         'x-folder-id': folder
       },
       body: JSON.stringify({
-        modelUri: `gpt://${folder}/yandexgpt-lite/latest`,
+        modelUri: `gpt://${folder}/yandexgpt/latest`,
         completionOptions: { stream: false, temperature: 0.3, maxTokens: '600' },
         messages
       })
