@@ -765,8 +765,15 @@ async function groqAsk(prompt, systemPrompt){
       body:JSON.stringify({model:GROQ_MODEL, messages:messages, max_tokens:600, temperature:0.3})
     });
     const d = await r.json();
+    if(!r.ok){
+      console.error('Groq error:', d);
+      return '';
+    }
     return d.choices?.[0]?.message?.content || '';
-  } catch(e){ console.error('Groq error:', e); return 'ERROR:'+e.message; }
+  } catch(e){
+    console.error('Groq fetch failed:', e);
+    return '';
+  }
 }
 
 // 1. ЗАПОЛНИТЬ КАРТОЧКУ ИЗ ОПИСАНИЯ
@@ -1010,7 +1017,7 @@ function doAdminLogin(){
 
 
 const GROQ_KEY = atob('Z3NrX2tURDUwdHZjZm9Mb2lUbDd0dVFiV0dkeWIzRllsMEFNc0ZzZ3o0N2ZXUHllOGc5TXIyOUE=');
-const GROQ_MODEL = 'llama3-8b-8192';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const PRODUCTS = [
   // Канистры 5л
@@ -1073,14 +1080,14 @@ const AROMAS_COS  = ['Pure Cannabis','Virgin Lemongrass','Tobacco Leaf & Vanilla
 const AROMAS_DIFF = ['Pure Cannabis','Oud Wealth','Warm Cinnamon Bun','Tobacco Leaf & Vanilla','Virgin Lemongrass'];
 const AROMAS_SPA  = ['White Lotus (SPA edition)','Hamam Lover (SPA edition)','Meditation Session (SPA edition)'];
 const SEG_LABELS  = {restaurant:'Посадочных мест',hotel:'Номеров',spa:'Гостей/день',glamping:'Лоджей / домиков',fitness:'Посетителей/день'};
-const SEG_GUESTS  = {restaurant:80,hotel:40,spa:30,glamping:15,fitness:60};
+const SEG_GUESTS  = {restaurant:80,hotel:90,spa:30,glamping:20,fitness:60};
 
 const SEG_NORMS = {
-  restaurant: {soap:3, lotion:2, gel:3, shampoo:0, cond:0, scrub:0},
-  hotel:      {soap:18, lotion:10, gel:18, shampoo:11, cond:7, scrub:0},
-  spa:        {soap:18, lotion:10, gel:18, shampoo:11, cond:7, scrub:10},
-  glamping:   {soap:18, lotion:10, gel:18, shampoo:11, cond:7, scrub:0},
-  fitness:    {soap:10, lotion:0, gel:18, shampoo:11, cond:0, scrub:0},
+  restaurant: {soap:2,  lotion:1,  gel:0,  shampoo:0, cond:0, scrub:0},
+  hotel:      {soap:3,  lotion:2,  gel:6,  shampoo:5, cond:3, scrub:0},
+  spa:        {soap:3,  lotion:3,  gel:8,  shampoo:6, cond:4, scrub:5},
+  glamping:   {soap:3,  lotion:2,  gel:6,  shampoo:5, cond:3, scrub:0},
+  fitness:    {soap:3,  lotion:0,  gel:6,  shampoo:5, cond:0, scrub:0},
 };
 function getNorm(id){ var sn=SEG_NORMS[state.segment]; return (sn && sn[id]!==undefined) ? sn[id] : 0; }
 const SECTIONS = ['client','products','preview','history','prices','custom','retail','dashboard','sales','faq','kb','profile'];
