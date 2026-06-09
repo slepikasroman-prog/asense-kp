@@ -368,7 +368,7 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   <div class="sec-title">Параметры объекта</div>
   <div class="params-row">
     <div class="param-block"><label id="lbl-seats">Посадочных мест</label><input id="p-seats" type="number" value="80" oninput="recalc()"></div>
-    <div class="param-block"><label>Гостей в день</label><input id="p-guests" type="number" value="80" oninput="recalc()"></div>
+    <div class="param-block"><label id="lbl-guests">Гостей в день</label><input id="p-guests" type="number" value="80" oninput="recalc()"></div>
     <div class="param-block"><label>Рабочих дней / мес</label><input id="p-days" type="number" value="26" oninput="recalc()"></div>
     <div class="param-block"><label style="display:flex;align-items:center">Скидка %<i class="tip" data-tip="Уменьшает все цены в КП на указанный процент. 0 = базовые цены из прайса">?</i></label><input id="p-disc" type="number" value="0" min="0" max="90" oninput="recalc()"></div>
   </div>
@@ -1122,6 +1122,8 @@ const AROMAS_DIFF = ['Pure Cannabis','Oud Wealth','Warm Cinnamon Bun','Tobacco L
 const AROMAS_SPA  = ['White Lotus (SPA edition)','Hamam Lover (SPA edition)','Meditation Session (SPA edition)'];
 const SEG_LABELS  = {restaurant:'Посадочных мест',hotel:'Номеров',spa:'Гостей/день',glamping:'Лоджей / домиков',fitness:'Посетителей/день'};
 const SEG_GUESTS  = {restaurant:80,hotel:90,spa:30,glamping:20,fitness:60};
+const SEG_SHOW_SEATS = {restaurant:true,hotel:true,spa:false,glamping:true,fitness:false};
+const SEG_GUESTS_LABEL = {restaurant:'Гостей в день',hotel:'Гостей в день',spa:'Гостей / посетителей в день',glamping:'Гостей в день',fitness:'Посетителей в день'};
 
 const SEG_NORMS = {
   restaurant: {soap:2,  lotion:1,  gel:0,  shampoo:0, cond:0, scrub:0},
@@ -1195,7 +1197,17 @@ function setSeg(seg, el){
   state.segment = seg;
   document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
   if(el) el.classList.add('active');
+  // Show/hide seats block
+  var seatsBlock = document.getElementById('p-seats') && document.getElementById('p-seats').closest('.param-block');
+  if(seatsBlock) seatsBlock.style.display = SEG_SHOW_SEATS[seg] ? '' : 'none';
   document.getElementById('lbl-seats').textContent = SEG_LABELS[seg];
+  // Update guests label
+  var guestLabel = document.querySelector('label[for="p-guests"], .param-block:has(#p-guests) label');
+  if(!guestLabel){
+    var pgEl = document.getElementById('p-guests');
+    if(pgEl) guestLabel = pgEl.previousElementSibling || pgEl.parentElement.querySelector('label');
+  }
+  var lbl = document.getElementById('lbl-guests'); if(lbl) lbl.textContent = SEG_GUESTS_LABEL[seg]||'Гостей в день';
   document.getElementById('p-guests').value = SEG_GUESTS[seg];
   var tpl = KP_TEMPLATES[seg];
   if(tpl){
