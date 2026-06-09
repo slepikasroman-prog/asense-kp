@@ -1546,6 +1546,85 @@ function copyFollowup(){
   });
 }
 
+
+async function generateFollowUp(id){
+  var saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
+  var s = saves.find(function(x){return x.id===id;});
+  if(!s) return;
+
+  if(!getYaKey()||!getYaFolder()){ showAISettings(); return; }
+
+  var name = s.name || 'клиент';
+  var date = s.date || '';
+  var total = s.total || '';
+  var segNames = {restaurant:'ресторан',hotel:'отель',spa:'спа',glamping:'глэмпинг',fitness:'фитнес'};
+  var seg = segNames[s.segment] || '';
+  var mgr = (s.inputs && s.inputs.manager) || '';
+  var contact = (s.inputs && s.inputs.contact) || '';
+  var daysAgo = '';
+  if(date){
+    var parts = date.split('.');
+    if(parts.length===3){
+      var d = new Date(parts[2], parts[1]-1, parts[0]);
+      var diff = Math.round((new Date()-d)/(1000*60*60*24));
+      daysAgo = diff + ' дн. назад';
+    }
+  }
+
+  // Show modal
+  var modal = document.getElementById('followup-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'followup-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML = '<div style="background:var(--surface);border:1px solid var(--gold);border-radius:16px;padding:24px;max-width:500px;width:100%">'
+      +'<div style="font-size:14px;font-weight:500;color:var(--gold);margin-bottom:4px">📨 Follow-up для: '+name+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:14px">КП от '+date+(daysAgo?' · '+daysAgo:'')+(total?' · '+total:'')+'</div>'
+      +'<div id="followup-result" style="padding:14px;background:var(--dark);border-radius:8px;font-size:13px;line-height:1.7;min-height:80px;color:var(--text)">⏳ Генерирую...</div>'
+      +'<div style="display:flex;gap:8px;margin-top:14px">'
+      +'<button class="btn btn-gold" style="flex:1;justify-content:center" onclick="copyFollowUp()">📋 Копировать</button>'
+      +'<button class="btn" onclick="closeFollowUp()">Закрыть</button>'
+      +'</div></div>';
+    document.body.appendChild(modal);
+  } else {
+    modal.style.display = 'flex';
+    document.getElementById('followup-result').textContent = '⏳ Генерирую...';
+  }
+
+  var prompt = 'Ты менеджер по продажам Asense — производителя премиальной косметики для HoReCa.\n'
+    + 'Напиши короткое follow-up сообщение для WhatsApp/Telegram.\n\n'
+    + 'Данные:\n'
+    + 'Клиент: ' + name + (seg?' ('+seg+')':'') + '\n'
+    + (contact?'Контакт: '+contact+'\n':'')
+    + 'КП было отправлено: ' + date + (daysAgo?' ('+daysAgo+')':'') + '\n'
+    + (total?'Сумма КП: '+total+'\n':'')
+    + (mgr?'Менеджер: '+mgr+'\n':'')
+    + '\nТребования к сообщению:\n'
+    + '- Короткое (3-4 строки максимум)\n'
+    + '- Обращение по имени если есть контакт\n'
+    + '- Напомни о КП ненавязчиво\n'
+    + '- Предложи ответить на вопросы или созвониться\n'
+    + '- Без шаблонных фраз типа "надеемся на сотрудничество"\n'
+    + '- Живой человеческий тон\n'
+    + 'Только текст сообщения, без пояснений.';
+
+  var result = await groqAsk(prompt, 'Ты опытный менеджер по продажам. Пишешь живые человеческие сообщения, не шаблонные.');
+
+  var el = document.getElementById('followup-result');
+  if(el) el.textContent = result || 'Не удалось сгенерировать. Попробуй ещё раз.';
+  modal._result = result;
+}
+
+function closeFollowUp(){ var m=document.getElementById("followup-modal"); if(m) m.style.display="none"; }
+function copyFollowUp(){
+  var modal = document.getElementById('followup-modal');
+  var text = modal ? (modal._result || '') : '';
+  navigator.clipboard.writeText(text).then(function(){ alert('Скопировано!'); }).catch(function(){
+    var ta=document.createElement('textarea'); ta.value=text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); alert('Скопировано!');
+  });
+}
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -1561,20 +1640,32 @@ function syncKPToCloud(e){var em=getMgrEmail();if(!em)return;sbFetch('kp_history
 function syncSaleToCloud(s){var em=getMgrEmail();if(!em)return;sbFetch('sales','POST',{id:s.id,manager_email:em,client:s.client,amount:s.amount,date:s.date,segment:s.segment,comment:s.comment||null}).catch(function(){});}
 function syncProfileToCloud(p){if(!p.email)return;sbFetch('manager_profiles','POST',{email:p.email,name:p.name||null,title:p.title||null,phone:p.phone||null,tg:p.tg||null,note:p.note||null,updated_at:new Date().toISOString()}).catch(function(){});}
 function loadFromCloud(){
-  var em=getMgrEmail();if(!em)return;
-  sbFetch('kp_history?manager_email=eq.'+encodeURIComponent(em)+'&order=created_at.desc&limit=100').then(function(r){return r.json();}).then(function(rows){
+  var k=getMgrKey();if(!k)return;
+  // KP History
+  sbFetch('kp_history?manager_email=eq.'+encodeURIComponent(k)+'&order=created_at.desc&limit=100')
+  .then(function(r){return r.json();})
+  .then(function(rows){
     if(!rows||!rows.length)return;
     var local=JSON.parse(localStorage.getItem('asense_kp')||'[]');
-    var ids=new Set(local.map(function(s){return s.id;}));
-    var add=rows.filter(function(r){return !ids.has(r.id);}).map(function(r){return {id:r.id,name:r.name,segment:r.segment,date:r.date,total:r.total,status:r.status,state:r.kp_state,inputs:r.inputs};}); 
-    if(add.length){localStorage.setItem('asense_kp',JSON.stringify(add.concat(local).slice(0,100)));var h=document.getElementById('sec-history');if(h&&h.style.display!=='none')renderHistory();}
+    var ids=new Set(local.map(function(s){return String(s.id);}));
+    var add=rows.filter(function(r){return !ids.has(String(r.id));})
+      .map(function(r){return {id:r.id,name:r.name,segment:r.segment,
+        date:r.date,total:r.total,status:r.status||'new',state:r.kp_state,inputs:r.inputs};});
+    if(add.length){
+      localStorage.setItem('asense_kp',JSON.stringify(add.concat(local).slice(0,100)));
+      var histSec=document.getElementById('sec-history');
+      if(histSec&&histSec.style.display!=='none') renderHistory();
+    }
   }).catch(function(){});
-  sbFetch('sales?manager_email=eq.'+encodeURIComponent(em)+'&order=created_at.desc').then(function(r){return r.json();}).then(function(rows){
+  // Sales
+  sbFetch('sales?manager_email=eq.'+encodeURIComponent(k)+'&order=created_at.desc&limit=200')
+  .then(function(r){return r.json();})
+  .then(function(rows){
     if(!rows||!rows.length)return;
     var local=JSON.parse(localStorage.getItem('asense_sales')||'[]');
-    var ids=new Set(local.map(function(s){return s.id;}));
-    var add=rows.filter(function(r){return !ids.has(r.id);});
-    if(add.length){localStorage.setItem('asense_sales',JSON.stringify(add.concat(local)));var s=document.getElementById('sec-sales');if(s&&s.style.display!=='none')renderSales();}
+    var ids=new Set(local.map(function(s){return String(s.id);}));
+    var add=rows.filter(function(r){return !ids.has(String(r.id));});
+    if(add.length) localStorage.setItem('asense_sales',JSON.stringify(add.concat(local)));
   }).catch(function(){});
 }
 
@@ -3282,6 +3373,7 @@ function renderHistory(query){
       +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
       +'<span style="font-size:11px;padding:2px 8px;border-radius:12px;background:'+statusColors[st]+'22;color:'+statusColors[st]+';border:1px solid '+statusColors[st]+'44">'+statusNames[st]+'</span>'
       +'<button class="btn btn-sm" onclick="previewSave('+s.id+')">👁 КП</button>'
++'<button class="btn btn-sm" title="Follow-up" onclick="generateFollowUp('+s.id+')">📨</button>'
       +'<button class="btn btn-sm" onclick="aiFollowup(\'+s.id+\')">📨</button>'
       +'<button class="btn btn-sm btn-dark" onclick="loadSave('+s.id+')">📂 Открыть</button>'
       +'<button class="btn btn-sm" style="color:red;border-color:#ffaaaa" onclick="deleteSave('+s.id+')">🗑</button>'
