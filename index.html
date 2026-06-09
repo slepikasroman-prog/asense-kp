@@ -761,20 +761,16 @@ async function groqAsk(prompt, systemPrompt){
     var messages = [];
     if(systemPrompt) messages.push({role:'system', text:systemPrompt});
     messages.push({role:'user', text:prompt});
-    const r = await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/completion', {
+    const r = await fetch('/api/ai', {
       method:'POST',
-      headers:{'Authorization':'Api-Key '+getYaKey(),'Content-Type':'application/json','x-folder-id':getYaFolder()},
-      body:JSON.stringify({
-        modelUri:'gpt://'+getYaFolder()+'/yandexgpt-lite/latest',
-        completionOptions:{stream:false,temperature:0.3,maxTokens:'600'},
-        messages:messages
-      })
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:getYaKey(), folder:getYaFolder(), messages:messages})
     });
     const d = await r.json();
-    if(!r.ok){ console.error('Yandex error:', d); return ''; }
-    return d.result?.alternatives?.[0]?.message?.text || '';
+    if(!r.ok){ console.error('AI proxy error:', d); return ''; }
+    return d.text || '';
   } catch(e){
-    console.error('Yandex fetch failed:', e);
+    console.error('AI fetch failed:', e);
     return '';
   }
 }
