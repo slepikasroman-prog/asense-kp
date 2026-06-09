@@ -373,21 +373,44 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
     <div style="font-size:14px;font-weight:500;color:var(--gold)">🤖 ИИ-советник</div>
     <button onclick="toggleClientAI()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-    <select id="cai-situation" style="flex:1;min-width:200px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit">
-      <option value="recommend">Что предложить этому клиенту?</option>
-      <option value="upsell">Как увеличить сумму сделки?</option>
-      <option value="objection">Клиент говорит «дорого»</option>
-      <option value="competitor">Есть поставщик — как переключить?</option>
-      <option value="cold">Как выйти на ЛПР?</option>
-      <option value="followup">Что написать после КП?</option>
-    </select>
-    <button class="btn btn-gold" onclick="runClientAI()" id="cai-btn">Спросить →</button>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+    <button id="cai-tab-advice" class="btn btn-sm btn-dark" onclick="switchCAITab('advice')" style="font-size:11px">💬 Совет</button>
+    <button id="cai-tab-chat" class="btn btn-sm" onclick="switchCAITab('chat')" style="font-size:11px">📨 Переписка</button>
+    <button id="cai-tab-aroma" class="btn btn-sm" onclick="switchCAITab('aroma')" style="font-size:11px">🌿 Аромат</button>
   </div>
-  <div style="margin-bottom:10px">
-    <input id="cai-context" type="text" placeholder="Доп. контекст (необязательно)..." style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit;outline:none">
+
+  <!-- Tab: Совет -->
+  <div id="cai-panel-advice">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <select id="cai-situation" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit">
+        <option value="recommend">Что предложить клиенту?</option>
+        <option value="upsell">Как увеличить сумму?</option>
+        <option value="objection">Клиент говорит «дорого»</option>
+        <option value="competitor">Есть поставщик</option>
+        <option value="cold">Как выйти на ЛПР?</option>
+        <option value="followup">Что написать после КП?</option>
+      </select>
+      <button class="btn btn-gold" onclick="runClientAI()" id="cai-btn">Спросить →</button>
+    </div>
+    <input id="cai-context" type="text" placeholder="Доп. контекст..." style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit;outline:none">
   </div>
-  <div id="cai-result" style="display:none;font-size:13px;line-height:1.7;padding-top:12px;border-top:1px solid var(--border)"></div>
+
+  <!-- Tab: Переписка -->
+  <div id="cai-panel-chat" style="display:none">
+    <textarea id="chat-input" placeholder="Вставьте переписку с клиентом..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit;resize:vertical;min-height:100px;outline:none;margin-bottom:8px"></textarea>
+    <button class="btn btn-gold" id="analyze-chat-btn" onclick="analyzeChat()" style="width:100%;justify-content:center">Анализировать →</button>
+  </div>
+
+  <!-- Tab: Аромат -->
+  <div id="cai-panel-aroma" style="display:none">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Опишите концепцию заведения — ИИ подберёт аромат из каталога Asense</div>
+    <textarea id="aroma-concept" placeholder="Например: японский ресторан, минимализм, суши, бизнес-аудитория, Москва..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--dark);color:var(--text);font-family:inherit;resize:vertical;min-height:70px;outline:none;margin-bottom:8px"></textarea>
+    <button class="btn btn-gold" id="aroma-pick-btn" onclick="pickAroma()" style="width:100%;justify-content:center">🌿 Подобрать аромат →</button>
+  </div>
+
+  <div id="cai-result" style="display:none;font-size:13px;line-height:1.7;padding-top:12px;margin-top:12px;border-top:1px solid var(--border)"></div>
 </div>
 </div>
 
@@ -1218,17 +1241,7 @@ async function runClientAI(){
     return;
   }
 
-  var lines = result.split('\n').filter(function(l){return l.trim();});
-  out.innerHTML = lines.map(function(l){
-    l = l.trim();
-    if(/^[•\-–—*\d]/.test(l)){
-      var clean = l.replace(/^[•\-–—*\s]+|^\d+\.\s*/,'');
-      return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
-        +'<span style="color:var(--gold);flex-shrink:0">→</span><span>'+clean+'</span></div>';
-    }
-    return '<div style="color:var(--muted);font-size:12px;padding:3px 0">'+l+'</div>';
-  }).join('');
-  out.style.display = 'block';
+  renderAIResult(out, result, situation, (document.getElementById('cai-context').value||'').substring(0,100));
 }
 
 function toggleBonuses(){
@@ -1241,6 +1254,174 @@ function toggleBonuses(){
   }
   updateTotals();
   if(document.getElementById('sec-preview').style.display !== 'none') renderPreview();
+}
+
+const AROMA_CATALOG = [
+  {id:'pure_cannabis', name:'Pure Cannabis', type:'cosmetic', desc:'Свежий, зелёный, слегка землистый. Нейтральный унисекс. Подходит для современных ресторанов, фитнеса, эко-отелей, коворкингов.'},
+  {id:'virgin_lemongrass', name:'Virgin Lemongrass', type:'cosmetic', desc:'Цитрусовый, бодрящий, лёгкий. Ассоциации: чистота, энергия, свежесть. Идеален для фитнеса, спа, кафе, пляжных отелей.'},
+  {id:'tobacco_vanilla', name:'Tobacco Leaf & Vanilla', type:'cosmetic', desc:'Тёплый, сладковатый, чувственный. Ассоциации: уют, роскошь, камин. Для барных ресторанов, бутик-отелей, охотничьих клубов.'},
+  {id:'vetiver_rosemary', name:'Vetiver & Rosemary', type:'cosmetic', desc:'Древесный, травяной, мужской. Для бизнес-отелей, мужских spa, premium-ресторанов в классическом стиле.'},
+  {id:'sea_salt_wood', name:'Sea Salt & Wood', type:'cosmetic', desc:'Морской, свежий, древесный. Для морских ресторанов, курортных отелей, яхт-клубов, пляжных spa.'},
+  {id:'oud_wealth', name:'Oud Wealth', type:'diffuser', desc:'Восточный, глубокий, роскошный. Для luxury-отелей, восточных ресторанов, premium-spa, бутик-отелей.'},
+  {id:'warm_cinnamon', name:'Warm Cinnamon Bun', type:'diffuser', desc:'Тёплый, уютный, выпечка. Для кафе, пекарен, семейных ресторанов, уютных отелей в классическом стиле.'},
+  {id:'white_lotus', name:'White Lotus (SPA)', type:'diffuser_spa', desc:'Чистый, цветочный, расслабляющий. Для spa, wellness, медитативных пространств, женских клубов.'},
+  {id:'hamam_lover', name:'Hamam Lover (SPA)', type:'diffuser_spa', desc:'Влажный, тёплый, восточный хаммам. Для турецких бань, spa с водными процедурами, термальных комплексов.'},
+  {id:'meditation', name:'Meditation Session (SPA)', type:'diffuser_spa', desc:'Лёгкий, духовный, ладан. Для йога-студий, медитативных spa, wellness-ретритов, буддийских отелей.'},
+];
+
+
+// ===== АНАЛИЗ ПЕРЕПИСКИ =====
+async function analyzeChat(){
+  var btn = document.getElementById('analyze-chat-btn');
+  var text = document.getElementById('chat-input').value.trim();
+  var out = document.getElementById('cai-result');
+  if(!text){ alert('Вставьте переписку'); return; }
+  if(!getYaKey()||!getYaFolder()){ showAISettings(); return; }
+
+  btn.textContent = '⏳...'; btn.disabled = true; out.style.display = 'none';
+
+  var clientName = document.getElementById('c-name').value || 'клиент';
+  var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+  var seg = segNames[state.segment] || '';
+
+  var prompt = 'Ты опытный B2B менеджер по продажам косметики Asense для HoReCa.\n'
+    + 'Клиент: ' + clientName + ' (' + seg + ')\n'
+    + 'Переписка:\n' + text.substring(0, 3000)
+    + '\n\nДай:\n1. Краткий анализ (2-3 строки): чего хочет клиент, какие возражения, настрой\n'
+    + '2. Готовый ответ менеджера который можно скопировать и отправить прямо сейчас\n'
+    + 'Пиши коротко и по делу. Ответ на русском.';
+
+  var result = await groqAsk(prompt, 'Ты опытный менеджер Asense. Отвечай коротко и конкретно.');
+  btn.textContent = 'Анализировать'; btn.disabled = false;
+
+  if(!result){ out.innerHTML = '<div style="color:#e44">Нет ответа. Проверь настройки ИИ.</div>'; out.style.display='block'; return; }
+  renderAIResult(out, result, 'chat', text.substring(0,200));
+}
+
+// ===== ПОДБОР АРОМАТА =====
+async function pickAroma(){
+  var btn = document.getElementById('aroma-pick-btn');
+  var concept = document.getElementById('aroma-concept').value.trim();
+  var out = document.getElementById('cai-result');
+  if(!concept){ alert('Опишите концепцию заведения'); return; }
+  if(!getYaKey()||!getYaFolder()){ showAISettings(); return; }
+
+  btn.textContent = '⏳...'; btn.disabled = true; out.style.display = 'none';
+
+  var clientName = document.getElementById('c-name').value || '';
+  var segNames = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'};
+  var seg = segNames[state.segment] || '';
+
+  var aromaList = AROMA_CATALOG.map(function(a){
+    return '- ' + a.name + ' (' + (a.type==='cosmetic'?'косметика':'диффузор') + '): ' + a.desc;
+  }).join('\n');
+
+  var prompt = 'Ты эксперт по ароматам и B2B продажам косметики Asense.\n'
+    + 'Клиент: ' + (clientName||'') + ' · ' + seg + '\n'
+    + 'Концепция заведения: ' + concept + '\n\n'
+    + 'Каталог ароматов Asense:\n' + aromaList + '\n\n'
+    + 'Подбери 1-2 аромата для косметики и 1 аромат для диффузора. '
+    + 'Для каждого объясни почему именно он подходит этому заведению (1-2 предложения). '
+    + 'Отвечай конкретно, только из каталога выше.';
+
+  var result = await groqAsk(prompt, 'Ты эксперт по ароматам. Рекомендуй только из предложенного каталога. Коротко и убедительно.');
+  btn.textContent = 'Подобрать'; btn.disabled = false;
+
+  if(!result){ out.innerHTML = '<div style="color:#e44">Нет ответа.</div>'; out.style.display='block'; return; }
+  renderAIResult(out, result, 'aroma', concept);
+}
+
+// ===== РЕНДЕР РЕЗУЛЬТАТА С КНОПКОЙ "ПОЛЕЗНО" =====
+function renderAIResult(out, result, situation, question){
+  var lines = result.split('\n').filter(function(l){return l.trim();});
+  var html = lines.map(function(l){
+    l = l.trim();
+    if(/^[•\-–—*]/.test(l)||/^\d+\./.test(l)){
+      var clean = l.replace(/^[•\-–—*\s]+|^\d+\.\s*/,'');
+      return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="color:var(--gold);flex-shrink:0">→</span><span>'+clean+'</span></div>';
+    }
+    return '<div style="padding:4px 0">'+l+'</div>';
+  }).join('');
+
+  html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+  out._aiResult = result;
+  out._aiSituation = situation;
+  out._aiQuestion = question;
+  html += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn btn-sm" onclick="saveToKB(this)" style="color:var(--green-t);border-color:var(--green-t)">👍 Полезно — в базу знаний</button>'
+    +'<button class="btn btn-sm" onclick="copyAIResult()">📋 Копировать</button>'
+    +'</div>';
+
+  out.innerHTML = html;
+  out.style.display = 'block';
+  // Store result for saving
+  out.dataset.result = result;
+  out.dataset.situation = situation;
+}
+
+// ===== СОХРАНИТЬ В БАЗУ ЗНАНИЙ =====
+async function saveToKB(btn){
+  var out = document.getElementById('cai-result');
+  var answer = out ? out._aiResult : '';
+  var situation = out ? out._aiSituation : '';
+  var question = out ? out._aiQuestion : '';
+  if(!answer){ alert('Нет ответа для сохранения'); return; }
+
+  var k = getMgrKey();
+  var seg = state.segment || '';
+
+  btn.textContent = '⏳ Сохраняю...'; btn.disabled = true;
+
+  sbFetch('ai_knowledge', 'POST', {
+    manager_email: k || 'anon',
+    situation: situation,
+    client_segment: seg,
+    question: question,
+    answer: answer,
+    helpful: true
+  }).then(function(){
+    btn.textContent = '✅ Сохранено!';
+    btn.style.background = 'var(--green-t)';
+    btn.style.color = '#fff';
+    setTimeout(function(){ btn.textContent='👍 Полезно — в базу знаний'; btn.style.background=''; btn.style.color='var(--green-t)'; btn.disabled=false; }, 3000);
+  }).catch(function(){
+    btn.textContent = '❌ Ошибка'; btn.disabled = false;
+  });
+}
+
+// ===== ЗАГРУЗИТЬ ПОХОЖИЕ КЕЙСЫ ИЗ БД =====
+async function loadSimilarKB(situation, segment){
+  try {
+    var r = await sbFetch('ai_knowledge?situation=eq.'+encodeURIComponent(situation)+'&client_segment=eq.'+encodeURIComponent(segment)+'&helpful=eq.true&order=created_at.desc&limit=3');
+    var rows = await r.json();
+    if(!rows || !rows.length) return '';
+    return '\n\nПОЛЕЗНЫЙ ОПЫТ КОМАНДЫ:\n' + rows.map(function(r){
+      return '• '+r.answer.substring(0,300);
+    }).join('\n');
+  } catch(e){ return ''; }
+}
+
+
+function switchCAITab(tab){
+  ['advice','chat','aroma'].forEach(function(t){
+    var panel = document.getElementById('cai-panel-'+t);
+    var btn = document.getElementById('cai-tab-'+t);
+    if(panel) panel.style.display = t===tab ? 'block' : 'none';
+    if(btn){ btn.className = t===tab ? 'btn btn-sm btn-dark' : 'btn btn-sm'; }
+  });
+  var out = document.getElementById('cai-result');
+  if(out) out.style.display = 'none';
+}
+
+function copyAIResult(){
+  var out = document.getElementById('cai-result');
+  var text = out ? (out._aiResult || out.innerText) : '';
+  navigator.clipboard.writeText(text).then(function(){ alert('Скопировано!'); }).catch(function(){
+    var ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); alert('Скопировано!');
+  });
 }
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
