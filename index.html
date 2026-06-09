@@ -471,7 +471,23 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
 <button class="btn btn-gold" onclick="go('preview')">👁 Предпросмотр КП</button>
+<button class="btn" onclick="toggleMiniCompare()" id="btn-mini-compare" style="border-color:var(--gold);color:var(--gold)">📊 Сравнить с миниатюрами</button>
 <button id="ai-suggest-btn" class="btn btn-dark" onclick="aiSuggestProducts()">💡 Что добавить?</button>
+</div>
+
+<div id="mini-compare-block" style="display:none;margin-top:16px;padding:18px;background:var(--surface);border:1px solid var(--gold);border-radius:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:500;color:var(--gold)">📊 Сравнение: канистры 5л vs миниатюры 30мл</div>
+    <button onclick="toggleMiniCompare()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Расчёт за месяц на основе текущих параметров объекта</div>
+  <div id="mini-compare-content"></div>
+  <div style="margin-top:12px;display:flex;gap:8px">
+    <button class="btn btn-dark" onclick="addMiniToExcel()" style="font-size:12px">📊 Добавить в Excel</button>
+  </div>
+</div>
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
 </div>
 <div id="ai-suggest-out" style="display:none;margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--gold);border-radius:10px"></div>
 </div>
@@ -1625,6 +1641,124 @@ function copyFollowUp(){
     document.body.removeChild(ta); alert('Скопировано!');
   });
 }
+
+// ===== MINI FORMAT COMPARISON =====
+// Prices per mini (30ml) by product
+const MINI_PRICES = {
+  soap:70, lotion:70, shampoo:70, cond:70, gel:70, scrub:70
+};
+// Mini set per segment (products per guest/stay)
+const MINI_SET = {
+  hotel:   {soap:1, lotion:1, shampoo:1, cond:1, gel:1},  // full set per room/day
+  spa:     {soap:1, lotion:1, gel:1},                       // 3 items per guest
+  glamping:{soap:1, lotion:1, shampoo:1, cond:1, gel:1},   // full set per stay
+};
+
+function toggleMiniCompare(){
+  var block = document.getElementById('mini-compare-block');
+  if(!block) return;
+  var seg = state.segment;
+  // Only for hotel, spa, glamping
+  if(!MINI_SET[seg]){
+    alert('Сравнение с миниатюрами актуально для отелей, СПА и глэмпингов.');
+    return;
+  }
+  var isOpen = block.style.display !== 'none';
+  block.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) renderMiniCompare();
+}
+
+function renderMiniCompare(){
+  var el = document.getElementById('mini-compare-content');
+  if(!el) return;
+  var seg = state.segment;
+  var set = MINI_SET[seg];
+  if(!set){ el.innerHTML='<div style="color:var(--muted)">Недоступно для этого сегмента</div>'; return; }
+
+  var guests = getGuests();
+  var days = getDays();
+  var disc = getDisc();
+
+  // Calculate canister cost (monthly, selected cosmetic products)
+  var canRows = [];
+  var totalCans = 0;
+  PRODUCTS.filter(function(p){ return state.checked[p.id] && p.type==='cosmetic' && set[p.id] !== undefined; })
+    .forEach(function(p){
+      var sn = getNorm(p.id)||p.norm;
+      var q = state.qty[p.id] || calcCans(sn);
+      var ap = Math.round(p.price*(1-disc/100));
+      var cost = q * ap;
+      totalCans += cost;
+      canRows.push({name:p.name.replace(' Asense',''), cans:q, price:ap, cost:cost});
+    });
+
+  // Calculate mini cost (monthly)
+  var miniRows = [];
+  var totalMini = 0;
+  // For hotel: per room per day; for glamping: per stay (not per day); for spa: per guest
+  var miniMultiplier = seg==='glamping' ? guests*4 : guests*days; // glamping ~4 stays/month avg
+  Object.keys(set).forEach(function(pid){
+    var prod = PRODUCTS.find(function(p){ return p.id===pid; });
+    if(!prod || !state.checked[pid]) return;
+    var qty = miniMultiplier * set[pid];
+    var price = Math.round((MINI_PRICES[pid]||70) * (1-disc/100));
+    var cost = qty * price;
+    totalMini += cost;
+    miniRows.push({name:prod.name.replace(' Asense',''), qty:Math.round(qty), price:price, cost:cost});
+  });
+
+  if(!canRows.length){ el.innerHTML='<div style="color:var(--muted)">Выберите продукты для сравнения</div>'; return; }
+
+  var diff = totalMini - totalCans;
+  var diffPct = totalCans ? Math.round(diff/totalCans*100) : 0;
+  var segNote = {hotel:'1 набор на номер в день', spa:'3 позиции на гостя', glamping:'1 набор на заезд (~4 заезда/мес)'}[seg]||'';
+
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">';
+  
+  // Канистры
+  html += '<div><div style="font-size:12px;font-weight:500;color:var(--gold);margin-bottom:8px">🪣 Канистры 5л / мес</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:4px">';
+  canRows.forEach(function(r){
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">'
+      +'<span>'+r.name+'</span>'
+      +'<span style="color:var(--muted)">'+r.cans+' кан. × '+r.price.toLocaleString('ru-RU')+'₽ = <b>'+r.cost.toLocaleString('ru-RU')+'₽</b></span></div>';
+  });
+  html += '</div>';
+  html += '<div style="margin-top:8px;font-size:13px;font-weight:600;color:var(--gold)">Итого: '+totalCans.toLocaleString('ru-RU')+' ₽/мес</div></div>';
+
+  // Миниатюры
+  html += '<div><div style="font-size:12px;font-weight:500;margin-bottom:8px;color:#aaa">🧴 Миниатюры 30мл / мес</div>';
+  html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+segNote+'</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:4px">';
+  miniRows.forEach(function(r){
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">'
+      +'<span>'+r.name+'</span>'
+      +'<span style="color:var(--muted)">'+r.qty+' шт. × '+r.price+'₽ = <b>'+r.cost.toLocaleString('ru-RU')+'₽</b></span></div>';
+  });
+  html += '</div>';
+  html += '<div style="margin-top:8px;font-size:13px;font-weight:600">Итого: '+totalMini.toLocaleString('ru-RU')+' ₽/мес</div></div>';
+  html += '</div>';
+
+  // Summary
+  var color = diff > 0 ? '#4CAF50' : '#f44336';
+  html += '<div style="padding:12px 16px;background:var(--dark);border-radius:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">';
+  html += '<div style="font-size:13px;color:#fff">Миниатюры <b style="color:'+(diff>0?'#f44336':'#4CAF50')+'">'+(diff>0?'дороже на ':'дешевле на ')+Math.abs(diff).toLocaleString('ru-RU')+' ₽/мес</b> ('+Math.abs(diffPct)+'%)</div>';
+  html += '<div style="font-size:11px;color:rgba(255,255,255,0.5)">В год: '+(diff>0?'+':'')+( diff*12).toLocaleString('ru-RU')+' ₽</div>';
+  html += '</div>';
+
+  // Store for Excel
+  el._data = {canRows:canRows, miniRows:miniRows, totalCans:totalCans, totalMini:totalMini, diff:diff, diffPct:diffPct, guests:guests, days:days, disc:disc, seg:seg, segNote:segNote};
+  el.innerHTML = html;
+}
+
+function addMiniToExcel(){
+  var el = document.getElementById('mini-compare-content');
+  if(!el||!el._data){ alert('Сначала откройте сравнение'); return; }
+  // Store flag to add mini comparison sheet
+  state.miniCompare = el._data;
+  alert('✅ Сравнение будет добавлено в Excel. Нажмите «Excel» в топбаре для скачивания.');
+}
+
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
 
@@ -2523,6 +2657,57 @@ function exportExcel(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws1, 'КП');
   XLSX.utils.book_append_sheet(wb, ws2, 'Расчёт косметики');
+
+  // Add mini comparison sheet if available
+  if(state.miniCompare){
+    var mc = state.miniCompare;
+    var r3 = [];
+    var m3 = [];
+    r3.push([hdr('ASENSE — Сравнение форматов: канистры 5л vs миниатюры 30мл',D,G,13),null,null,null,null]);
+    r3.push([sub('Сегмент: '+mc.seg+' · '+mc.guests+' гостей/день · '+mc.days+' дней/мес'+(mc.disc>0?' · скидка '+mc.disc+'%':'')),null,null,null,null]);
+    r3.push([null,null,null,null,null]);
+    m3.push({s:{r:0,c:0},e:{r:0,c:4}});
+    m3.push({s:{r:1,c:0},e:{r:1,c:4}});
+
+    // Canister section
+    r3.push([hdr('КАНИСТРЫ 5 000 МЛ',NV),null,null,null,null]);
+    m3.push({s:{r:3,c:0},e:{r:3,c:4}});
+    r3.push([xlCell('Продукт',{bg:'3D5A80',fg:WH,bold:true,sz:10}),xlCell('Канистр/мес',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}),xlCell('Цена канистры',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}),xlCell('Сумма/мес',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}),null]);
+    var canStart = r3.length;
+    mc.canRows.forEach(function(r,i){
+      var bg=i%2===0?CR:WH;
+      r3.push([dat(r.name,bg),dat(r.cans,bg,'center'),dat(r.price.toLocaleString('ru-RU')+' ₽',bg,'right'),dat(r.cost.toLocaleString('ru-RU')+' ₽',bg,'right'),null]);
+    });
+    r3.push([tot('ИТОГО канистры'),tot(''),tot(''),xlCell(mc.totalCans.toLocaleString('ru-RU')+' ₽',{bg:D,fg:G,bold:true,sz:11,align:'right'}),null]);
+    r3.push([null,null,null,null,null]);
+
+    // Mini section
+    r3.push([hdr('МИНИАТЮРЫ 30 МЛ',NV),null,null,null,null]);
+    m3.push({s:{r:r3.length-1,c:0},e:{r:r3.length-1,c:4}});
+    r3.push([xlCell('Норма: '+mc.segNote,{bg:'3D5A80',fg:WH,bold:true,sz:10}),xlCell('Шт./мес',{bg:'3D5A80',fg:WH,bold:true,sz:10,align:'center'}),xlCell('Цена/шт.',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}),xlCell('Сумма/мес',{bg:'3D5A80',fg:G,bold:true,sz:10,align:'right'}),null]);
+    mc.miniRows.forEach(function(r,i){
+      var bg=i%2===0?'EDE9FE':WH;
+      r3.push([dat(r.name,bg),dat(r.qty,bg,'center'),dat(r.price+' ₽',bg,'right'),dat(r.cost.toLocaleString('ru-RU')+' ₽',bg,'right'),null]);
+    });
+    r3.push([tot('ИТОГО миниатюры'),tot(''),tot(''),xlCell(mc.totalMini.toLocaleString('ru-RU')+' ₽',{bg:D,fg:mc.diff>0?'f44336':'4CAF50',bold:true,sz:11,align:'right'}),null]);
+    r3.push([null,null,null,null,null]);
+
+    // Conclusion
+    var diffColor = mc.diff>0?'f44336':'4CAF50';
+    r3.push([xlCell('ВЫВОД',{bg:D,fg:G,bold:true,sz:12}),null,null,null,null]);
+    m3.push({s:{r:r3.length-1,c:0},e:{r:r3.length-1,c:4}});
+    var conclusion = mc.diff>0
+      ? 'Миниатюры ДОРОЖЕ канистр на '+Math.abs(mc.diff).toLocaleString('ru-RU')+' ₽/мес ('+Math.abs(mc.diffPct)+'%). Канистры выгоднее для регулярного использования.'
+      : 'Миниатюры ДЕШЕВЛЕ канистр на '+Math.abs(mc.diff).toLocaleString('ru-RU')+' ₽/мес. Актуально при низком потреблении.';
+    r3.push([xlCell(conclusion,{bg:'FFFDE7',fg:'555500',sz:10,wrap:true}),null,null,null,null]);
+    m3.push({s:{r:r3.length-1,c:0},e:{r:r3.length-1,c:4}});
+    r3.push([xlCell('Разница в год: '+(mc.diff>0?'+':'')+( mc.diff*12).toLocaleString('ru-RU')+' ₽',{bg:D,fg:diffColor,bold:true,sz:12}),null,null,null,null]);
+    m3.push({s:{r:r3.length-1,c:0},e:{r:r3.length-1,c:4}});
+
+    var ws3 = buildSheet(r3, m3, [{wch:38},{wch:14},{wch:16},{wch:16},{wch:4}], [{hpt:26},{hpt:13}]);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Сравнение форматов');
+  }
+
   XLSX.writeFile(wb, 'КП_Asense_'+cName.replace(/\s/g,'_')+'.xlsx');
 }
 
