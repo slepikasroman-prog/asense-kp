@@ -63,16 +63,40 @@ export default async function handler(req, res) {
 <title>КП Asense — ${kp.client_name || ''}</title>
 <style>
   body{margin:0;padding:20px;background:#f5f0e8;font-family:system-ui,-apple-system,sans-serif}
-  .kp-wrap{max-width:800px;margin:0 auto;background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1)}
-  @media print{body{background:#fff;padding:0}.kp-wrap{box-shadow:none;padding:20px}}
+  .kp-wrap{max-width:800px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1)}
+  @media print{body{background:#fff;padding:0}.kp-wrap{box-shadow:none;padding:0}}
   .kp-actions{max-width:800px;margin:16px auto;display:flex;gap:10px;justify-content:center}
   .kp-actions button{padding:10px 24px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-family:inherit}
   .btn-print{background:#1A1A2E;color:#C9A84C}
-  .btn-pdf{background:#C9A84C;color:#1A1A2E}
+  .kp-doc{background:#fff;color:#1a1a1a;padding:36px 40px;max-width:700px;margin:0 auto;font-size:12.5px;font-family:'Helvetica Neue',Arial,sans-serif}
+.kp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #ddd}
+.kp-brand{font-size:26px;font-weight:300;letter-spacing:4px;color:#1a1a1a}
+.kp-brand em{font-style:italic}
+.kp-brand-sub{font-size:9px;color:#999;letter-spacing:1px;margin-top:3px}
+.kp-req{text-align:right;font-size:9.5px;color:#777;line-height:1.65}
+.kp-req strong{color:#1a1a1a}
+.kp-date{font-size:11px;color:#999}
+.kp-heading{font-size:14px;font-weight:500;text-align:center;margin:12px 0 16px}
+.kp-intro{font-size:12.5px;color:#333;line-height:1.65;margin-bottom:18px}
+table.kp-t{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+table.kp-t thead tr{background:#1A1A2E}
+table.kp-t thead th{padding:8px 10px;color:#fff;font-weight:500;text-align:left}
+table.kp-t thead th:not(:first-child){text-align:right}
+table.kp-t tbody tr:nth-child(even){background:#F5F2EC}
+table.kp-t tbody td{padding:7px 10px;border-bottom:0.5px solid #eee}
+table.kp-t tbody td:not(:first-child){text-align:right;font-weight:500}
+tr.kp-sec td{background:#2E4057;color:#fff;font-weight:500;padding:6px 10px}
+tr.kp-tot td{background:#1A1A2E;color:#fff;font-weight:500;padding:10px}
+tr.kp-tot td:last-child{color:#C9A84C;font-size:14px}
+tr.kp-free td{background:#E8F5E9;color:#2E7D32}
+.kp-aromanote{margin-top:12px;padding:10px 14px;background:#F9F5EE;border-radius:5px;font-size:11px;color:#555;line-height:1.65}
+.kp-foot{margin-top:20px;padding-top:12px;border-top:1px solid #eee;font-size:10px;color:#999;text-align:center;line-height:1.8}
+.kp-foot strong{color:#1a1a1a}
+  .kp-doc{padding:20px}
 </style>
 </head>
 <body>
-<div class="kp-wrap">${html}</div>
+${html}
 <div class="kp-actions">
   <button class="btn-print" onclick="window.print()">🖨 Распечатать</button>
 </div>
