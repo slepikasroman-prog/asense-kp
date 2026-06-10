@@ -323,6 +323,7 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 <button class="btn btn-sm" onclick="showAISettings()" title="Настройки ИИ">🤖</button>
     <button class="btn btn-sm" onclick="exportExcel()">📊 Excel</button>
     <button class="btn btn-sm btn-gold" onclick="printKP()">🖨 PDF</button>
+    <button class="btn btn-sm" onclick="shareCurrentKP()" style="background:var(--gold);color:var(--dark);font-weight:600">🔗 Онлайн КП</button>
   </div>
 </div>
 
@@ -1839,6 +1840,51 @@ async function shareKP(id){
   }
 
   alert('✅ Ссылка скопирована!\n\n' + url + '\n\nОтправьте клиенту — вы получите уведомление в Telegram когда он откроет.');
+}
+
+async function shareCurrentKP(){
+  // Save first if not saved
+  var cName = document.getElementById('c-name').value.trim();
+  if(!cName){ alert('Заполните название клиента'); return; }
+
+  var tgId = localStorage.getItem('asense_tg_id')||'';
+  if(!tgId){
+    tgId = prompt('Введите ваш Telegram ID.\nОтправьте /start боту @asense_kp_bot чтобы узнать.');
+    if(!tgId) return;
+    localStorage.setItem('asense_tg_id', tgId);
+  }
+
+  var html = buildKPHtml();
+  var linkId = 'kp_' + Date.now().toString(36) + Math.random().toString(36).substr(2,4);
+  var em = getMgrKey();
+  var total = document.getElementById('total-sum') ? document.getElementById('total-sum').textContent : '';
+
+  try {
+    await sbFetch('kp_links', 'POST', {
+      id: linkId,
+      manager_email: em || '',
+      manager_telegram_id: tgId,
+      client_name: cName,
+      segment: state.segment || '',
+      total: parseInt(total.replace(/\D/g,'')) || 0,
+      kp_html: html,
+      kp_data: {segment:state.segment, checked:state.checked, qty:state.qty},
+      views_count: 0
+    });
+  } catch(e){
+    alert('Ошибка сохранения. Попробуйте ещё раз.');
+    return;
+  }
+
+  var url = 'https://asense-kp.vercel.app/api/kp?id=' + linkId;
+
+  try { await navigator.clipboard.writeText(url); } catch(e){
+    var ta = document.createElement('textarea'); ta.value = url;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  alert('✅ Ссылка на онлайн КП скопирована!\n\n' + url + '\n\nОтправьте клиенту — уведомление придёт в Telegram.');
 }
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
