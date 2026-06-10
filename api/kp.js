@@ -141,7 +141,9 @@ ${kpHtml}
 <script>
 function toggleAdd(){
   var p=document.getElementById('addPanel');
-  if(p) p.style.display=p.style.display==='none'?'block':'none';
+  if(!p) return;
+  var isHidden = !p.style.display || p.style.display==='none';
+  p.style.display = isHidden ? 'block' : 'none';
 }
 async function submitOrder(){
   var checks=document.querySelectorAll('#addProducts input:checked');
