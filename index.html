@@ -1498,82 +1498,6 @@ function copyAIResult(){
   });
 }
 
-async function aiFollowup(id){
-  var saves=JSON.parse(localStorage.getItem('asense_kp')||'[]');
-  var s=saves.find(function(x){return x.id===id;});
-  if(!s)return;
-  if(!getYaKey()||!getYaFolder()){showAISettings();return;}
-
-  var clientName=s.name||'клиент';
-  var segNames={restaurant:'ресторан',hotel:'отель',spa:'спа',glamping:'глэмпинг',fitness:'фитнес'};
-  var seg=segNames[s.segment]||'';
-  var total=s.total||'';
-  var date=s.date||'';
-  var city=s.inputs?(s.inputs.city||''):'';
-  var contact=s.inputs?(s.inputs.contact||''):'';
-  var p=getProfile();
-
-  // Create modal
-  var modal=document.createElement('div');
-  modal.id='followup-modal';
-  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px';
-  var box=document.createElement('div');
-  box.style.cssText='background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px;max-width:480px;width:100%';
-  var title=document.createElement('div');
-  title.style.cssText='font-size:14px;font-weight:500;color:var(--gold);margin-bottom:14px';
-  title.textContent='📨 Follow-up для: '+clientName;
-  var textEl=document.createElement('div');
-  textEl.id='followup-text';
-  textEl.style.cssText='font-size:13px;color:var(--muted);padding:16px;background:var(--dark);border-radius:8px;min-height:80px;line-height:1.7';
-  textEl.textContent='⏳ Генерирую...';
-  var btns=document.createElement('div');
-  btns.style.cssText='display:flex;gap:10px;margin-top:14px';
-  var copyBtn=document.createElement('button');
-  copyBtn.className='btn btn-gold';
-  copyBtn.style.cssText='flex:1;justify-content:center';
-  copyBtn.textContent='📋 Скопировать';
-  copyBtn.onclick=copyFollowup;
-  var closeBtn=document.createElement('button');
-  closeBtn.className='btn';
-  closeBtn.textContent='Закрыть';
-  closeBtn.onclick=closeFollowup;
-  btns.appendChild(copyBtn);
-  btns.appendChild(closeBtn);
-  box.appendChild(title);
-  box.appendChild(textEl);
-  box.appendChild(btns);
-  modal.appendChild(box);
-  document.body.appendChild(modal);
-
-  var prompt='Ты менеджер по продажам Asense — производителя премиальной косметики для HoReCa.\n'
-    +'Ты отправил КП клиенту и пишешь follow-up.\n\n'
-    +'Клиент: '+clientName+(city?' · '+city:'')+'\n'
-    +'Сегмент: '+seg+'\n'
-    +(contact?'Контакт: '+contact+'\n':'')
-    +(total?'Сумма КП: '+total+'\n':'')
-    +(date?'КП отправлен: '+date+'\n':'')
-    +(p.name?'Менеджер: '+p.name+'\n':'')
-    +'\nНапиши короткое follow-up сообщение для WhatsApp/Telegram (2-3 предложения). '
-    +'Живой деловой тон, без штампов типа "надеемся на сотрудничество". '
-    +'Напомни про КП, предложи ответить на вопросы. Только текст, без подписи.';
-
-  var result=await groqAsk(prompt,'Ты опытный менеджер по продажам. Пиши живо и по-человечески, коротко.');
-  if(textEl){
-    if(result){textEl.textContent=result.trim();textEl.style.color='var(--text)';}
-    else{textEl.textContent='Не удалось сгенерировать. Проверь настройки ИИ.';}
-  }
-}
-function closeFollowup(){var m=document.getElementById('followup-modal');if(m)m.remove();}
-function copyFollowup(){
-  var el=document.getElementById('followup-text');
-  if(!el)return;
-  navigator.clipboard.writeText(el.textContent).then(function(){alert('Скопировано!');}).catch(function(){
-    var ta=document.createElement('textarea');ta.value=el.textContent;
-    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('Скопировано!');
-  });
-}
-
-
 async function generateFollowUp(id){
   var saves = JSON.parse(localStorage.getItem('asense_kp')||'[]');
   var s = saves.find(function(x){return x.id===id;});
@@ -2222,6 +2146,7 @@ const adjPrice  = p => Math.round(p*(1-getDisc()/100));
 const calcCans  = norm => Math.max(1, Math.ceil(getGuests()*getDays()*norm/5000));
 
 function go(id){
+  var mm=document.getElementById('mob-menu'); if(mm) mm.style.display='none';
   SECTIONS.forEach(s=>{
     var sec=document.getElementById('sec-'+s);
     var nav=document.getElementById('nav-'+s);
@@ -2246,9 +2171,6 @@ function go(id){
   if(id==='kb')      renderKB();
   if(id==='profile') loadProfile();
 if(id==='ai') renderAI();
-  document.querySelectorAll('.mob-btn').forEach(function(b){b.classList.remove('active');});
-  var mob2 = document.getElementById('mob-'+id);
-  if(mob2) mob2.classList.add('active');
 }
 
 function setSeg(seg, el){
@@ -3787,7 +3709,6 @@ function renderHistory(query){
 +'<button class="btn btn-sm" title="Follow-up" onclick="generateFollowUp('+s.id+')">📨</button>'
 +'<button class="btn btn-sm" title="Отправить ссылку" onclick="shareKP('+s.id+')">🔗</button>'
 +((function(){var sl=JSON.parse(localStorage.getItem('asense_shared_links')||'{}');return sl[String(s.id)]?'<button class="btn btn-sm" style="color:var(--gold)" onclick="showKPViews(\''+sl[String(s.id)]+'\',this)" title="Аналитика просмотров">👁?</button>':'';})())
-      +'<button class="btn btn-sm" onclick="aiFollowup(\'+s.id+\')">📨</button>'
       +'<button class="btn btn-sm btn-dark" onclick="loadSave('+s.id+')">📂 Открыть</button>'
       +'<button class="btn btn-sm" style="color:red;border-color:#ffaaaa" onclick="deleteSave('+s.id+')">🗑</button>'
       +'</div>'
