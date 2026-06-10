@@ -17,9 +17,25 @@ const PRODUCTS_LIST = [
 ];
 
 export default async function handler(req, res) {
-  // Handle order submission
+  // Handle POST requests (order or metrics)
   if (req.method === 'POST') {
-    const { kp_id, items, comment } = req.body || {};
+    const body = req.body || {};
+    
+    // Handle metrics update
+    if (body.action === 'metrics') {
+      const { view_id, meta } = body;
+      if (view_id && meta) {
+        await fetch(`${SB_URL}/rest/v1/kp_views?id=eq.${view_id}`, {
+          method: 'PATCH',
+          headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ meta, duration_sec: meta.duration || 0 })
+        });
+      }
+      res.status(200).json({ok:true}); return;
+    }
+
+    // Handle order submission
+    const { kp_id, items, comment } = body;
     if (!kp_id || !items) { res.status(400).json({error:'Missing data'}); return; }
 
     const r = await fetch(`${SB_URL}/rest/v1/kp_links?id=eq.${kp_id}&select=*`, {
@@ -68,11 +84,13 @@ export default async function handler(req, res) {
   } catch(e) {}
 
   if (!isMgr) {
-    await fetch(`${SB_URL}/rest/v1/kp_views`, {
+    const viewResp = await fetch(`${SB_URL}/rest/v1/kp_views`, {
       method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
       body: JSON.stringify({ kp_id: id, ip, device, browser, city })
     });
+    let viewId = null;
+    try { const vr = await viewResp.json(); viewId = vr[0]?.id; } catch(e) {}
     await fetch(`${SB_URL}/rest/v1/kp_links?id=eq.${id}`, {
       method: 'PATCH',
       headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
@@ -138,7 +156,7 @@ ${kpHtml}
   <textarea class="add-comment" id="addComment" placeholder="Комментарий (необязательно)..."></textarea>
   <button class="add-submit" id="addBtn" onclick="submitOrder()">📨 Отправить запрос менеджеру</button>
 </div>
-<script>
+<script>var VIEW_ID=`${viewId||""}`;var KP_ID="${id}";
 function toggleAdd(){
   var p=document.getElementById('addPanel');
   if(!p) return;
@@ -162,6 +180,42 @@ async function submitOrder(){
     }else{btn.textContent='❌ Ошибка';btn.disabled=false;}
   }catch(e){btn.textContent='❌ Ошибка';btn.disabled=false;}
 }
+
+// === TRACKING ===
+var _startTime = Date.now();
+var _maxScroll = 0;
+var _printed = false;
+var _addClicked = false;
+var _referrer = document.referrer || 'direct';
+
+window.addEventListener('scroll', function(){
+  var scrollPct = Math.round((window.scrollY + window.innerHeight) / document.body.scrollHeight * 100);
+  if(scrollPct > _maxScroll) _maxScroll = scrollPct;
+});
+
+var _origPrint = window.print;
+window.print = function(){ _printed = true; _origPrint.call(window); };
+
+var _origToggle = window.toggleAdd;
+if(_origToggle) window.toggleAdd = function(){ _addClicked = true; _origToggle(); };
+
+function sendMetrics(){
+  if(!VIEW_ID) return;
+  var duration = Math.round((Date.now() - _startTime) / 1000);
+  var meta = {
+    duration: duration,
+    scroll_pct: _maxScroll,
+    printed: _printed,
+    add_clicked: _addClicked,
+    referrer: _referrer.substring(0, 200)
+  };
+  navigator.sendBeacon('/api/kp', new Blob([JSON.stringify({action:'metrics', view_id:VIEW_ID, meta:meta})], {type:'application/json'}));
+}
+
+// Send metrics on page unload
+window.addEventListener('beforeunload', sendMetrics);
+// Also send every 30 sec in case they close without triggering beforeunload
+setInterval(function(){ if(VIEW_ID) sendMetrics(); }, 30000);
 </script>
 </body></html>`);
 }

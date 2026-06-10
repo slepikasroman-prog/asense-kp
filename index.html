@@ -1924,10 +1924,26 @@ async function showKPViews(linkId, btnEl){
       var date = v.created_at ? new Date(v.created_at) : null;
       var dateStr = date ? date.toLocaleDateString('ru-RU')+' '+date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : '';
       var ago = date ? getTimeAgo(date) : '';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">';
-      html += '<span>📱 '+( v.device||'?')+', '+(v.browser||'?')+(v.city?', '+v.city:'')+'</span>';
+      var meta = v.meta || {};
+      var durStr = meta.duration ? (meta.duration < 60 ? meta.duration+'с' : Math.floor(meta.duration/60)+'м '+meta.duration%60+'с') : '';
+      var scrollStr = meta.scroll_pct ? meta.scroll_pct+'%' : '';
+      var badges = [];
+      if(durStr) badges.push('⏱'+durStr);
+      if(scrollStr) badges.push('📜'+scrollStr);
+      if(meta.printed) badges.push('🖨');
+      if(meta.add_clicked) badges.push('＋');
+      if(meta.referrer && meta.referrer!=='direct'){
+        var ref = meta.referrer;
+        if(ref.includes('t.me')||ref.includes('telegram')) badges.push('💬TG');
+        else if(ref.includes('wa.me')||ref.includes('whatsapp')) badges.push('💬WA');
+        else if(ref.includes('mail')||ref.includes('gmail')) badges.push('📧');
+      }
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:4px">';
+      html += '<span>📱 '+(v.device||'?')+', '+(v.browser||'?')+(v.city?', '+v.city:'')+'</span>';
+      html += '<div style="display:flex;gap:6px;align-items:center">';
+      if(badges.length) html += '<span style="font-size:10px;color:var(--gold)">'+badges.join(' ')+'</span>';
       html += '<span style="color:var(--muted);font-size:11px">'+ago+'</span>';
-      html += '</div>';
+      html += '</div></div>';
     });
     html += '</div>';
     panel.innerHTML = html;
