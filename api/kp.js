@@ -129,7 +129,7 @@ export default async function handler(req, res) {
 ${kpHtml}
 <div class="kp-actions">
   <button class="btn-print" onclick="window.print()">🖨 Распечатать</button>
-  <button class="btn-add" onclick="document.getElementById('addPanel').style.display=document.getElementById('addPanel').style.display==='none'?'block':'none'">＋ Дополнить заказ</button>
+  <button class="btn-add" onclick="toggleAdd()">＋ Дополнить заказ</button>
 </div>
 <div class="add-panel" id="addPanel">
   <h3>Добавить к заказу</h3>
@@ -139,6 +139,10 @@ ${kpHtml}
   <button class="add-submit" id="addBtn" onclick="submitOrder()">📨 Отправить запрос менеджеру</button>
 </div>
 <script>
+function toggleAdd(){
+  var p=document.getElementById('addPanel');
+  if(p) p.style.display=p.style.display==='none'?'block':'none';
+}
 async function submitOrder(){
   var checks=document.querySelectorAll('#addProducts input:checked');
   if(!checks.length){alert('Выберите хотя бы один продукт');return;}
