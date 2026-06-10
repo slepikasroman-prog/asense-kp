@@ -3786,7 +3786,7 @@ function renderHistory(query){
       +'<button class="btn btn-sm" onclick="previewSave('+s.id+')">👁 КП</button>'
 +'<button class="btn btn-sm" title="Follow-up" onclick="generateFollowUp('+s.id+')">📨</button>'
 +'<button class="btn btn-sm" title="Отправить ссылку" onclick="shareKP('+s.id+')">🔗</button>'
-+((function(){var sl=JSON.parse(localStorage.getItem('asense_shared_links')||'{}');return sl[String(s.id)]?'<button class="btn btn-sm" style="color:var(--gold)" onclick="showKPViews(\''+sl[String(s.id)]+'\',this)">👁</button>':'';})())
++((function(){var sl=JSON.parse(localStorage.getItem('asense_shared_links')||'{}');return sl[String(s.id)]?'<button class="btn btn-sm" style="color:var(--gold)" onclick="showKPViews(\''+sl[String(s.id)]+'\',this)" title="Аналитика просмотров">👁?</button>':'';})())
       +'<button class="btn btn-sm" onclick="aiFollowup(\'+s.id+\')">📨</button>'
       +'<button class="btn btn-sm btn-dark" onclick="loadSave('+s.id+')">📂 Открыть</button>'
       +'<button class="btn btn-sm" style="color:red;border-color:#ffaaaa" onclick="deleteSave('+s.id+')">🗑</button>'
