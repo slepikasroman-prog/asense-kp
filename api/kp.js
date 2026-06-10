@@ -88,7 +88,63 @@ export default async function handler(req, res) {
 
     if (shouldNotify && kp.manager_telegram_id) {
       const views = (kp.views_count || 0) + 1;
-      const text = '👁 Клиент открыл КП!\n📋 ' + (kp.client_name||'—') + ' (' + (kp.segment||'') + ')\n💰 ' + (kp.total ? Number(kp.total).toLocaleString('ru-RU') + ' ₽' : '—') + '\n🕐 Только что\n📱 ' + device + ', ' + browser + (city ? ', ' + city : '') + '\n👀 Просмотров: ' + views;
+
+      // Check unique IPs (forwarding detection)
+      let uniqueIPs = 1;
+      let forwarded = false;
+      try {
+        const ipCheck = await (await sbFetch('kp_views?kp_id=eq.' + id + '&select=ip&order=created_at.desc&limit=50')).json();
+        const ips = new Set(ipCheck.map(function(v){ return v.ip; }));
+        uniqueIPs = ips.size;
+        forwarded = uniqueIPs > 1 && !ips.has(ip);
+      } catch(e) {}
+
+      // Check previous views for scoring
+      let totalDuration = 0;
+      let maxScroll = 0;
+      let printed = false;
+      let addClicked = false;
+      try {
+        const prevViews = await (await sbFetch('kp_views?kp_id=eq.' + id + '&select=meta,duration_sec&order=created_at.desc&limit=20')).json();
+        prevViews.forEach(function(v) {
+          totalDuration += (v.duration_sec || 0);
+          if (v.meta) {
+            if (v.meta.scroll_pct > maxScroll) maxScroll = v.meta.scroll_pct;
+            if (v.meta.printed) printed = true;
+            if (v.meta.add_clicked) addClicked = true;
+          }
+        });
+      } catch(e) {}
+
+      // Calculate score
+      let score = 0;
+      if (views >= 3) score += 2;
+      else if (views >= 2) score += 1;
+      if (totalDuration >= 120) score += 2;
+      else if (totalDuration >= 30) score += 1;
+      if (maxScroll >= 90) score += 1;
+      if (printed) score += 2;
+      if (addClicked) score += 2;
+      if (forwarded || uniqueIPs > 1) score += 2;
+
+      let heat = '🔵 Холодный';
+      let advice = '';
+      if (score >= 6) { heat = '🔥🔥🔥 Горячий'; advice = '\n\n💡 Звони прямо сейчас!'; }
+      else if (score >= 3) { heat = '🟡 Тёплый'; advice = '\n\n💡 Напиши follow-up сегодня'; }
+
+      let text = '👁 Клиент открыл КП!\n'
+        + '📋 ' + (kp.client_name||'—') + ' (' + (kp.segment||'') + ')\n'
+        + '💰 ' + (kp.total ? Number(kp.total).toLocaleString('ru-RU') + ' ₽' : '—') + '\n'
+        + '📱 ' + device + ', ' + browser + (city ? ', ' + city : '') + '\n'
+        + '👀 Просмотров: ' + views + '\n'
+        + heat;
+
+      if (forwarded) text += '\n📤 Новое устройство — возможно переслал коллеге/руководству';
+      if (uniqueIPs > 1) text += '\n👥 Открыли с ' + uniqueIPs + ' разных устройств';
+      if (printed) text += '\n🖨 Клиент распечатал КП';
+      if (addClicked) text += '\n＋ Клиент смотрел доп. продукты';
+      text += advice;
+
       await fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: kp.manager_telegram_id, text: text })
