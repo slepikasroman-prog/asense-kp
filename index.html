@@ -1442,7 +1442,7 @@ async function saveToKB(btn){
   var question = out ? out._aiQuestion : '';
   if(!answer){ alert('Нет ответа для сохранения'); return; }
 
-  var k = getMgrKey();
+  var k = getMgrEmail();
   var seg = state.segment || '';
 
   btn.textContent = '⏳ Сохраняю...'; btn.disabled = true;
@@ -1810,7 +1810,7 @@ async function shareKP(id){
   Object.assign(state, oldState);
 
   var linkId = 'kp_' + Date.now().toString(36) + Math.random().toString(36).substr(2,4);
-  var em = getMgrKey();
+  var em = getMgrEmail();
 
   // Save to Supabase
   try {
@@ -1858,7 +1858,7 @@ async function shareCurrentKP(){
 
   var html = buildKPHtml();
   var linkId = 'kp_' + Date.now().toString(36) + Math.random().toString(36).substr(2,4);
-  var em = getMgrKey();
+  var em = getMgrEmail();
   var total = document.getElementById('total-sum') ? document.getElementById('total-sum').textContent : '';
 
   try {
@@ -1904,7 +1904,7 @@ function syncKPToCloud(e){var em=getMgrEmail();if(!em)return;sbFetch('kp_history
 function syncSaleToCloud(s){var em=getMgrEmail();if(!em)return;sbFetch('sales','POST',{id:s.id,manager_email:em,client:s.client,amount:s.amount,date:s.date,segment:s.segment,comment:s.comment||null}).catch(function(){});}
 function syncProfileToCloud(p){if(!p.email)return;sbFetch('manager_profiles','POST',{email:p.email,name:p.name||null,title:p.title||null,phone:p.phone||null,tg:p.tg||null,note:p.note||null,updated_at:new Date().toISOString()}).catch(function(){});}
 function loadFromCloud(){
-  var k=getMgrKey();if(!k)return;
+  var k=getMgrEmail();if(!k)return;
   // KP History
   sbFetch('kp_history?manager_email=eq.'+encodeURIComponent(k)+'&order=created_at.desc&limit=100')
   .then(function(r){return r.json();})
