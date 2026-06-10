@@ -323,7 +323,6 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 <button class="btn btn-sm" onclick="showAISettings()" title="Настройки ИИ">🤖</button>
     <button class="btn btn-sm" onclick="exportExcel()">📊 Excel</button>
     <button class="btn btn-sm btn-gold" onclick="printKP()">🖨 PDF</button>
-    <button class="btn btn-sm" onclick="shareCurrentKP()" style="background:var(--gold);color:var(--dark);font-weight:600">🔗 Онлайн КП</button>
   </div>
 </div>
 
@@ -332,6 +331,9 @@ tr.kp-free td{background:#E8F5E9;color:#2E7D32}
 <!-- CLIENT -->
 <div id="sec-client">
   
+<div style="margin-bottom:14px">
+<button type="button" onclick="shareCurrentKP()" style="width:100%;padding:12px;border:2px solid var(--gold);background:transparent;color:var(--gold);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;z-index:10">🔗 Отправить онлайн КП клиенту</button>
+</div>
 <div class="sec-title">Сегмент</div>
   <div class="seg-tabs">
     <button class="seg-btn active" onclick="setSeg('restaurant',this)">🍽 Ресторан</button>
@@ -1843,7 +1845,7 @@ async function shareKP(id){
 }
 
 async function shareCurrentKP(){
-  // Save first if not saved
+  try {
   var cName = document.getElementById('c-name').value.trim();
   if(!cName){ alert('Заполните название клиента'); return; }
 
@@ -1885,6 +1887,7 @@ async function shareCurrentKP(){
   }
 
   alert('✅ Ссылка на онлайн КП скопирована!\n\n' + url + '\n\nОтправьте клиенту — уведомление придёт в Telegram.');
+  } catch(err) { alert('Ошибка: ' + err.message); }
 }
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
