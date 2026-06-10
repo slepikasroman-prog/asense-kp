@@ -1918,7 +1918,32 @@ async function showKPViews(linkId, btnEl){
   if(!views.length){
     panel.innerHTML = '<div style="color:var(--muted)">Пока нет просмотров</div>';
   } else {
-    var html = '<div style="font-size:11px;color:var(--gold);margin-bottom:8px;font-weight:500">👁 Просмотры ('+views.length+')</div>';
+    // Calculate score
+    var totalDuration = 0, maxScroll = 0, printed = false, addClicked = false;
+    var ips = new Set();
+    views.forEach(function(v){
+      totalDuration += (v.duration_sec || 0);
+      ips.add(v.ip);
+      if(v.meta){
+        if(v.meta.scroll_pct > maxScroll) maxScroll = v.meta.scroll_pct;
+        if(v.meta.printed) printed = true;
+        if(v.meta.add_clicked) addClicked = true;
+      }
+    });
+    var sc = 0;
+    if(views.length>=3) sc+=2; else if(views.length>=2) sc+=1;
+    if(totalDuration>=120) sc+=2; else if(totalDuration>=30) sc+=1;
+    if(maxScroll>=90) sc+=1;
+    if(printed) sc+=2;
+    if(addClicked) sc+=2;
+    if(ips.size>1) sc+=2;
+    var heat = sc>=6?'🔥🔥🔥 Горячий':sc>=3?'🟡 Тёплый':'🔵 Холодный';
+
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<span style="font-size:11px;color:var(--gold);font-weight:500">👁 '+views.length+' просмотр(ов)</span>'
+      +'<span style="font-size:12px;font-weight:600">'+heat+'</span></div>';
+    if(ips.size>1) html+='<div style="font-size:11px;color:var(--gold);margin-bottom:6px">📤 Открыли с '+ips.size+' разных устройств</div>';
+    if(totalDuration>0) html+='<div style="font-size:11px;color:var(--muted);margin-bottom:8px">⏱ Общее время: '+(totalDuration<60?totalDuration+'с':Math.floor(totalDuration/60)+'м '+totalDuration%60+'с')+(maxScroll>0?' · 📜 Макс. скролл: '+maxScroll+'%':'')+(printed?' · 🖨':'')+(addClicked?' · ＋':'')+'</div>';
     html += '<div style="display:flex;flex-direction:column;gap:4px">';
     views.forEach(function(v){
       var date = v.created_at ? new Date(v.created_at) : null;
