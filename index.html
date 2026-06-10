@@ -1880,6 +1880,11 @@ async function shareCurrentKP(){
 
   var url = 'https://asense-kp.vercel.app/api/kp?id=' + linkId;
 
+  // Save linkId for analytics
+  var sharedLinks = JSON.parse(localStorage.getItem('asense_shared_links')||'{}');
+  sharedLinks[cName] = linkId;
+  localStorage.setItem('asense_shared_links', JSON.stringify(sharedLinks));
+
   try { await navigator.clipboard.writeText(url); } catch(e){
     var ta = document.createElement('textarea'); ta.value = url;
     document.body.appendChild(ta); ta.select(); document.execCommand('copy');
@@ -1888,6 +1893,56 @@ async function shareCurrentKP(){
 
   alert('✅ Ссылка скопирована!\n\n' + url + '\n\nОтправьте клиенту — уведомление придёт в Telegram.\n\nЧтобы посмотреть самому без уведомления — добавьте &mgr=1 в конец ссылки.');
   } catch(err) { alert('Ошибка: ' + err.message); }
+}
+
+// ===== KP VIEWS ANALYTICS =====
+async function loadKPViews(kpId){
+  try {
+    var r = await sbFetch('kp_views?kp_id=eq.'+encodeURIComponent(kpId)+'&order=created_at.desc&limit=20');
+    return await r.json();
+  } catch(e){ return []; }
+}
+
+async function showKPViews(linkId, btnEl){
+  var existing = document.getElementById('views-panel-'+linkId);
+  if(existing){ existing.remove(); return; }
+
+  btnEl.textContent = '⏳';
+  var views = await loadKPViews(linkId);
+  btnEl.textContent = '👁 '+views.length;
+
+  var panel = document.createElement('div');
+  panel.id = 'views-panel-'+linkId;
+  panel.style.cssText = 'margin-top:8px;padding:12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;font-size:12px';
+
+  if(!views.length){
+    panel.innerHTML = '<div style="color:var(--muted)">Пока нет просмотров</div>';
+  } else {
+    var html = '<div style="font-size:11px;color:var(--gold);margin-bottom:8px;font-weight:500">👁 Просмотры ('+views.length+')</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px">';
+    views.forEach(function(v){
+      var date = v.created_at ? new Date(v.created_at) : null;
+      var dateStr = date ? date.toLocaleDateString('ru-RU')+' '+date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : '';
+      var ago = date ? getTimeAgo(date) : '';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">';
+      html += '<span>📱 '+( v.device||'?')+', '+(v.browser||'?')+(v.city?', '+v.city:'')+'</span>';
+      html += '<span style="color:var(--muted);font-size:11px">'+ago+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    panel.innerHTML = html;
+  }
+
+  btnEl.closest('.history-item, div[style]').appendChild(panel);
+}
+
+function getTimeAgo(date){
+  var diff = Math.round((new Date()-date)/1000);
+  if(diff<60) return 'только что';
+  if(diff<3600) return Math.floor(diff/60)+' мин. назад';
+  if(diff<86400) return Math.floor(diff/3600)+' ч. назад';
+  if(diff<604800) return Math.floor(diff/86400)+' дн. назад';
+  return date.toLocaleDateString('ru-RU');
 }
 const SB_URL = 'https://mtotltoanudwuxbvhejl.supabase.co';
 const SB_KEY = 'sb_publishable_tR87NIbBX5gEZaqnZKq9EQ_JjIIDFxf';
@@ -3690,6 +3745,7 @@ function renderHistory(query){
       +'<button class="btn btn-sm" onclick="previewSave('+s.id+')">👁 КП</button>'
 +'<button class="btn btn-sm" title="Follow-up" onclick="generateFollowUp('+s.id+')">📨</button>'
 +'<button class="btn btn-sm" title="Отправить ссылку" onclick="shareKP('+s.id+')">🔗</button>'
++((function(){var sl=JSON.parse(localStorage.getItem('asense_shared_links')||'{}');return sl[String(s.id)]?'<button class="btn btn-sm" style="color:var(--gold)" onclick="showKPViews(\''+sl[String(s.id)]+'\',this)">👁</button>':'';})())
       +'<button class="btn btn-sm" onclick="aiFollowup(\'+s.id+\')">📨</button>'
       +'<button class="btn btn-sm btn-dark" onclick="loadSave('+s.id+')">📂 Открыть</button>'
       +'<button class="btn btn-sm" style="color:red;border-color:#ffaaaa" onclick="deleteSave('+s.id+')">🗑</button>'
