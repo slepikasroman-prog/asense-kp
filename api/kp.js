@@ -127,13 +127,14 @@ export default async function handler(req, res) {
       if (addClicked) score += 2;
       if (forwarded || uniqueIPs > 1) score += 2;
 
-      let heat = '🔵 Холодный';
+      let heat = '🔵 Просто открыл — пока без интереса';
       let advice = '';
-      if (score >= 6) { heat = '🔥🔥🔥 Горячий'; advice = '\n\n💡 Звони прямо сейчас!'; }
-      else if (score >= 3) { heat = '🟡 Тёплый'; advice = '\n\n💡 Напиши follow-up сегодня'; }
+      if (score >= 6) { heat = '🔥 Очень заинтересован!'; advice = '\n\n💡 Звони прямо сейчас — клиент изучает КП!'; }
+      else if (score >= 3) { heat = '🟡 Есть интерес — изучает'; advice = '\n\n💡 Напиши follow-up сегодня'; }
 
+      var segRu = {restaurant:'Ресторан',hotel:'Отель',spa:'СПА',glamping:'Глэмпинг',fitness:'Фитнес'}[kp.segment] || kp.segment || '';
       let text = '👁 Клиент открыл КП!\n'
-        + '📋 ' + (kp.client_name||'—') + ' (' + (kp.segment||'') + ')\n'
+        + '📋 ' + (kp.client_name||'—') + ' (' + segRu + ')\n'
         + '💰 ' + (kp.total ? Number(kp.total).toLocaleString('ru-RU') + ' ₽' : '—') + '\n'
         + '📱 ' + device + ', ' + browser + (city ? ', ' + city : '') + '\n'
         + '👀 Просмотров: ' + views + '\n'
