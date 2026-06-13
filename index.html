@@ -1861,7 +1861,7 @@ async function showKPViews(linkId, btnEl){
     if(printed) sc+=2;
     if(addClicked) sc+=2;
     if(ips.size>1) sc+=2;
-    var heat = sc>=6?'🔥🔥🔥 Горячий':sc>=3?'🟡 Тёплый':'🔵 Холодный';
+    var heat = sc>=6?'🔥 Очень заинтересован!':sc>=3?'🟡 Есть интерес':'🔵 Просто открыл';
 
     var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       +'<span style="font-size:11px;color:var(--gold);font-weight:500">👁 '+views.length+' просмотр(ов)</span>'
